@@ -23,6 +23,7 @@ import time
 
 from implementation import evaluator
 from implementation import programs_database
+from implementation import sample_iterator
 
 
 class LLM(ABC):
@@ -93,26 +94,44 @@ class Sampler:
             # stop the search process if hit global max sample nums
             if self._max_sample_nums and self.__class__._global_samples_nums >= self._max_sample_nums:
                 break
-            try:
-                prompt = self._database.get_prompt()
-                reset_time = time.time()
-                samples = self._llm.draw_samples(prompt.code)
-                sample_time = (time.time() - reset_time) / self._samples_per_prompt
-                # This loop can be executed in parallel on remote evaluator machines.
-                for sample in samples:
-                    self._global_sample_nums_plus_one()  # RZ: add _global_sample_nums
-                    cur_global_sample_nums = self._get_global_sample_nums()
-                    chosen_evaluator: evaluator.Evaluator = np.random.choice(self._evaluators)
-                    chosen_evaluator.analyse(
-                        sample,
-                        prompt.island_id,
-                        prompt.version_generated,
-                        **kwargs,
-                        global_sample_nums=cur_global_sample_nums,
-                        sample_time=sample_time
-                    )
-            except:
-                continue
+            # try:
+            prompt = self._database.get_prompt()
+            reset_time = time.time()
+            samples = self._llm.draw_samples(prompt.code)
+            sample_time = (time.time() - reset_time) / self._samples_per_prompt
+            # This loop can be executed in parallel on remote evaluator machines.
+
+            samples_new = []
+            for sample in samples:
+                tune_sampler = sample_iterator.SampleIterator(
+                    code=sample
+                    # sample_name=line_clean[0],
+                    # store_folder_name=store_folder_name,
+                    # regular=f"\[tunable\]\[((([\w.]+)\|)+([\w.]+))*\]",
+                    # regular=f"\[tunable\]\[([\w.]+)\|([\w.]+)*\]",
+                    # regular=f"\[tunable\]\[([\w.]+(?:\|[\w.]+)*)\]",
+                    # regular=line_clean[1],
+                    # split=f",",
+                )
+                instances = tune_sampler.iterate_sample()
+                samples_new.extend(instances)
+
+
+            for sample in samples_new:
+                self._global_sample_nums_plus_one()  # RZ: add _global_sample_nums
+                cur_global_sample_nums = self._get_global_sample_nums()
+                chosen_evaluator: evaluator.Evaluator = np.random.choice(self._evaluators)
+                chosen_evaluator.analyse(
+                    sample,
+                    prompt.island_id,
+                    prompt.version_generated,
+                    **kwargs,
+                    global_sample_nums=cur_global_sample_nums,
+                    sample_time=sample_time
+                )
+            # except Exception as err:
+            #     print('sample error', err)
+            #     time.sleep(1)
 
     def _get_global_sample_nums(self) -> int:
         return self.__class__._global_samples_nums

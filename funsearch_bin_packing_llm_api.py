@@ -15,6 +15,10 @@ import multiprocessing
 from typing import Collection, Any
 import http.client
 from implementation import sampler
+import requests
+import time
+from concurrent.futures import ProcessPoolExecutor
+import re
 
 
 def _trim_preface_of_body(sample: str) -> str:
@@ -37,12 +41,22 @@ def _trim_preface_of_body(sample: str) -> str:
     This function aims to ...
     -------------------------------------
     """
-    lines = sample.splitlines()
+    start_str = 'def priority'
+    end_str = '    return'
+    code_list = re.findall('```python(.*?)```', sample, flags=re.DOTALL)
+    code_core = None
+    for code in code_list:
+        if '\n'+start_str in code and code.count('\n'+end_str) == 1:
+            code_core = code
+            break
+    if code_core is None:
+        raise Exception('Can not find core code.')
+    lines = code.splitlines()
     func_body_lineno = 0
     find_def_declaration = False
     for lineno, line in enumerate(lines):
         # find the first 'def' statement in the given code
-        if line[:3] == 'def':
+        if line.startswith(start_str):
             func_body_lineno = lineno
             find_def_declaration = True
             break
@@ -50,8 +64,128 @@ def _trim_preface_of_body(sample: str) -> str:
         code = ''
         for line in lines[func_body_lineno + 1:]:
             code += line + '\n'
+            if line.startswith(end_str):
+                break
         return code
     return sample
+
+
+def request(prompt):
+    for retry_i in range(5):
+        try:
+            print('request...')
+            # json_data = {
+            #     "model": "llama3.3",
+            #     "prompt": prompt,
+            #     # "n_predict": 512
+            #     "stream": False
+            # }
+            # # response = requests.post('http://114.214.164.112:8080/completion', json=json_data)
+            # # response = json.loads(response.text)['content']
+            # response = requests.post('http://localhost:11434/api/generate', json=json_data)
+            # response = json.loads(response.text)['response']
+            # return response   
+
+
+
+
+            # url = "https://api.siliconflow.cn/v1/chat/completions"
+            # payload = {
+            #     "model": "Pro/deepseek-ai/DeepSeek-V3",
+            #     "messages": [
+            #         {
+            #             "role": "system",
+            #             "content": "You are a helpful assistant."
+            #         },
+            #         {
+            #             "content": prompt,
+            #             "role": "user"
+            #         }
+            #     ]
+            # }
+            # headers = {
+            #     "Authorization": "Bearer sk-qkrxgebdsvhdrbeuarbsykhdxllsbshxlwlzqujujsqajnje",
+            #     "Content-Type": "application/json"
+            # }
+
+            # response = requests.request("POST", url, json=payload, headers=headers)
+            # if response.status_code != 200:
+            #     print('response.status_code', response.status_code, response.text)
+            # data = json.loads(response.text)
+
+            # return data['choices'][0]['message']['content']
+
+
+            headers = {
+                'Authorization': 'Bearer f184bcd9-68b0-49be-8a3f-ea095ee71e14',
+            }
+            provider = 'DeepInfra'
+
+            # response = requests.post('https://ark.cn-beijing.volces.com/api/v3/chat/completions', headers=headers, json={
+            #     # 'model': 'ep-20250227102412-tfkv8',  # v3
+            #     'model': 'ep-20250303202036-j6hfh',  # r1
+            #     'messages': [
+            #         {
+            #             "role": "system",
+            #             "content": "You are a helpful assistant."
+            #         },
+            #         {
+            #             "content": prompt,
+            #             "role": "user"
+            #         }
+            #     ],
+            #     # 'provider': {
+            #     #     'order': [
+            #     #         provider,
+            #     #     ],
+            #     #     'allow_fallbacks': False
+            #     # },
+            # })
+
+            # if response.status_code != 200:
+            #     print('response.status_code', response.status_code, response.text)
+            #     raise Exception('request net error')
+
+            
+
+            # data = json.loads(response.text)
+
+            with open('data.json', 'r') as f:
+                data = json.load(f)
+
+            # if data['provider'] != provider:
+            #     print(f'specific provider: {provider}, actual provicer: {data["provider"]}')
+            #     raise Exception('not the specific privoder')
+            
+            return data['choices'][0]['message']['content']
+        except Exception as e:
+            print(f'errr111__{retry_i}')
+            print(e)
+            time.sleep(1)
+    return prompt
+
+
+# def request_batch(prompt_batch):
+#     for retry_i in range(5):
+#         try:
+#             print('request...')
+#             json_data = {
+#                 # "model": "llama3.3",
+#                 "prompt": prompt_batch,
+#                 "n_predict": 512
+#                 # "stream": False
+#             }
+            
+#             response = requests.post('http://114.214.164.112:8080/completion', json=json_data)
+#             response_list = json.loads(response.text)
+            
+#             batch_result = [prompt+response['content'] for prompt, response in zip(prompt_batch, response_list)]
+#             return batch_result   
+#         except Exception as e:
+#             print(f'errr111__{retry_i}')
+#             print(e)
+#             time.sleep(5)
+#     return prompt_batch
 
 
 class LLMAPI(sampler.LLM):
@@ -60,47 +194,63 @@ class LLMAPI(sampler.LLM):
 
     def __init__(self, samples_per_prompt: int, trim=True):
         super().__init__(samples_per_prompt)
-        additional_prompt = ('Complete a different and more complex Python function. '
-                             'Be creative and you can insert multiple if-else and for-loop in the code logic.'
-                             'Only output the Python code, no descriptions.')
+        # additional_prompt = ('Complete a different and more complex Python function. '
+        #                      'Be creative and you can insert multiple if-else and for-loop in the code logic. '
+        #                      'Only output the Python code, no descriptions.')
+        additional_prompt = \
+"""
+I am developing a priority function for an online bin-packing problem aiming to minimize the number of used bins. Based on the provided **Python reference implementations**, please:
+
+### Strategic Optimization
+Redesign the priority logic through (but not limited to):
+1. **Alternative Heuristic Formulations**
+   (e.g., hybrid strategies combining size/weight)
+2. **Dynamic Adjustment Mechanisms**
+   (e.g., adapt parameters based on remaining capacity or item arrival rate)
+3. **Context-aware Decision Branching**
+   (e.g., switch heuristics if item sizes follow a tunable(['uniform', 'skewed']) distribution)
+
+### Parameterization
+1. **Identify Tunable Elements** in code segments, including (but not limited to):
+   • Numerical constants (e.g., `weight = tunable([0.5, 1.0, 2.0]`)
+   • Conditional thresholds (e.g., `if remaining_capacity > tunable([0.2, 0.5])`)
+   • Strategy flags (e.g., `use_heuristic = tunable(['best_fit', 'worst_fit'])`)
+   • Code statements (e.g., `sorted(items, key=lambda x: tunable([x.size, x.weight]))`)
+
+2. **Replacement Format**:
+   Use `tunable([option1, option2, ...])` for direct value replacement.
+   **Validation**:
+   • Example valid usage:
+     `if remaining_capacity > tunable([0.2, 0.5]):`
+     `priority = size * tunable([0.5, 1.0]) + weight * tunable([0.5, 1.0])`
+"""
         self._additional_prompt = additional_prompt
         self._trim = trim
 
+        self.executor = ProcessPoolExecutor(max_workers=samples_per_prompt)
+        
+
     def draw_samples(self, prompt: str) -> Collection[str]:
         """Returns multiple predicted continuations of `prompt`."""
-        return [self._draw_sample(prompt) for _ in range(self._samples_per_prompt)]
+        return self._draw_sample([prompt] * self._samples_per_prompt)
 
-    def _draw_sample(self, content: str) -> str:
-        prompt = '\n'.join([content, self._additional_prompt])
-        while True:
-            try:
-                conn = http.client.HTTPSConnection("api.chatanywhere.com.cn")
-                payload = json.dumps({
-                    "max_tokens": 512,
-                    "model": "gpt-3.5-turbo",
-                    "messages": [
-                        {
-                            "role": "user",
-                            "content": prompt
-                        }
-                    ]
-                })
-                headers = {
-                    'Authorization': 'Bearer sk-ys02zx......(replace with your own)......',
-                    'User-Agent': 'Apifox/1.0.0 (https://apifox.com)',
-                    'Content-Type': 'application/json'
-                }
-                conn.request("POST", "/v1/chat/completions", payload, headers)
-                res = conn.getresponse()
-                data = res.read().decode("utf-8")
-                data = json.loads(data)
-                response = data['choices'][0]['message']['content']
-                # trim function
-                if self._trim:
-                    response = _trim_preface_of_body(response)
-                return response
-            except Exception:
-                continue
+    def _draw_sample(self, content_list: list) -> str:
+        prompt_list = ['\n'.join([content, self._additional_prompt]) for content in content_list]
+        futures = [self.executor.submit(request, prompt) for prompt in prompt_list]
+        response_list = []
+        for future in futures:
+            response = future.result()
+            if self._trim:
+                response = _trim_preface_of_body(response)
+            response_list.append(response)
+        return response_list
+        # response_list = request_batch(prompt_list)
+        # response_list_final = []
+        # for response in response_list:
+        #     if self._trim:
+        #         response = _trim_preface_of_body(response)
+        #         response_list_final.append(response)
+        # return response_list_final
 
 
 class Sandbox(evaluator.Sandbox):
@@ -272,10 +422,16 @@ def priority(item: float, bins: np.ndarray) -> np.ndarray:
 # Because the inner code uses multiprocess evaluation.
 if __name__ == '__main__':
     class_config = config.ClassConfig(llm_class=LLMAPI, sandbox_class=Sandbox)
-    config = config.Config(samples_per_prompt=4, evaluate_timeout_seconds=30)
+    config = config.Config(samples_per_prompt=1, evaluate_timeout_seconds=30)
 
     bin_packing_or3 = {'OR3': bin_packing_utils.datasets['OR3']}
-    global_max_sample_num = 10  # if it is set to None, funsearch will execute an endless loop
+    global_max_sample_num = 1000  # if it is set to None, funsearch will execute an endless loop
+    import shutil, os
+    log_dir = f'logs'
+    if os.path.exists(log_dir):
+        # input('delete logs folder?')
+        shutil.rmtree(log_dir)
+        # time.sleep(1)
     funsearch.main(
         specification=specification,
         inputs=bin_packing_or3,

@@ -1,4 +1,4 @@
-from tunable_able_with_split import Gen_Func
+from sample_iterator import SampleIterator
 import os
 
 if __name__ == "__main__":
@@ -7,7 +7,7 @@ if __name__ == "__main__":
         for line in lines:
             line_clean = line.strip().split(" ")
             store_folder_name = os.path.splitext(line_clean[0])[0]
-            tunable = Gen_Func(
+            tune_sampler = SampleIterator(
                 sample_name=line_clean[0],
                 store_folder_name=store_folder_name,
                 # regular=f"\[tunable\]\[((([\w.]+)\|)+([\w.]+))*\]",
@@ -16,4 +16,4 @@ if __name__ == "__main__":
                 regular=line_clean[1],
                 split=f",",
             )
-            tunable.run()
+            tune_sampler.iterate_sample()
