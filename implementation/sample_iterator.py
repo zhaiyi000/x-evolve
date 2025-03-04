@@ -13,8 +13,8 @@ class SampleIterator:
         self._code = code
         # self._sample_name = sample_name
         # self._store_folder_name = store_folder_name
-        self._regular = "\[tunable\]((?:(?!tunable).)+)\|\|"
-        self._split = '||'
+        self._regular = "tunable\(\[(.*?)\]\)"
+        self._split = ','
 
     # def tunable_find(self):
     #     matches_in = re.findall(self._regular, self._code)
@@ -52,8 +52,8 @@ class SampleIterator:
             # self.save_function(function_code, count)
             # count += 1
             instances.append(function_code)
-            if '[tunable]' in function_code:
-                raise Exception('tuneable in function_code')
+            # if 'tunable(' in function_code:
+            #     raise Exception('tuneable in function_code')
         return instances
 
     # def save_function(self, code: str, count: int):
