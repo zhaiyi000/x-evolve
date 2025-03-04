@@ -101,7 +101,7 @@ class Sampler:
             sample_time = (time.time() - reset_time) / self._samples_per_prompt
             # This loop can be executed in parallel on remote evaluator machines.
 
-            samples_new = []
+            # samples_new = []
             for sample in samples:
                 tune_sampler = sample_iterator.SampleIterator(
                     code=sample
@@ -113,22 +113,29 @@ class Sampler:
                     # regular=line_clean[1],
                     # split=f",",
                 )
-                instances = tune_sampler.iterate_sample()
-                samples_new.extend(instances)
+
+                for sample_i in range(10):
+
+                    indices, instances = tune_sampler.batch_sample(batch_size=3)
+                    # samples_new.extend(instances)
+                    score_list = []
 
 
-            for sample in samples_new:
-                self._global_sample_nums_plus_one()  # RZ: add _global_sample_nums
-                cur_global_sample_nums = self._get_global_sample_nums()
-                chosen_evaluator: evaluator.Evaluator = np.random.choice(self._evaluators)
-                chosen_evaluator.analyse(
-                    sample,
-                    prompt.island_id,
-                    prompt.version_generated,
-                    **kwargs,
-                    global_sample_nums=cur_global_sample_nums,
-                    sample_time=sample_time
-                )
+                    for sample in instances:
+                        self._global_sample_nums_plus_one()  # RZ: add _global_sample_nums
+                        cur_global_sample_nums = self._get_global_sample_nums()
+                        chosen_evaluator: evaluator.Evaluator = np.random.choice(self._evaluators)
+                        score = chosen_evaluator.analyse(
+                            sample,
+                            prompt.island_id,
+                            prompt.version_generated,
+                            **kwargs,
+                            global_sample_nums=cur_global_sample_nums,
+                            sample_time=sample_time
+                        )
+                        score_list.append(score)
+
+                    tune_sampler.update_score(indices, score_list)
             # except Exception as err:
             #     print('sample error', err)
             #     time.sleep(1)

@@ -53,7 +53,7 @@ def _softmax(logits: np.ndarray, temperature: float) -> np.ndarray:
     return result
 
 
-def _reduce_score(scores_per_test: ScoresPerTest) -> float:
+def reduce_score(scores_per_test: ScoresPerTest) -> float:
     """Reduces per-test scores into a single score.
     """
     # TODO RZ: change the code to average the score of each test.
@@ -127,7 +127,7 @@ class ProgramsDatabase:
     ) -> None:
         """Registers `program` in the specified island."""
         self._islands[island_id].register_program(program, scores_per_test)
-        score = _reduce_score(scores_per_test)
+        score = reduce_score(scores_per_test)
         if score > self._best_score_per_island[island_id]:
             self._best_program_per_island[island_id] = program
             self._best_scores_per_test_per_island[island_id] = scores_per_test
@@ -221,7 +221,7 @@ class Island:
         """Stores a program on this island, in its appropriate cluster."""
         signature = _get_signature(scores_per_test)
         if signature not in self._clusters:
-            score = _reduce_score(scores_per_test)
+            score = reduce_score(scores_per_test)
             self._clusters[signature] = Cluster(score, program)
         else:
             self._clusters[signature].register_program(program)

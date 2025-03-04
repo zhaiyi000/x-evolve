@@ -212,6 +212,7 @@ class Evaluator:
                 **kwargs,
                 evaluate_time=evaluate_time
             )
+            return programs_database.reduce_score(scores_per_test)
         else:
             profiler: profile.Profiler = kwargs.get('profiler', None)
             if profiler:

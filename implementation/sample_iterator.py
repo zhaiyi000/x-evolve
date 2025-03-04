@@ -1,9 +1,18 @@
 import itertools
 import os
 import re
+# import random
+import numpy as np
 
 
 FILE_DEBUG_MODE = False
+MIN_SCORE = -1e10
+
+
+def softmax(x):
+    x = np.array(x)
+    x -= np.max(x)
+    return np.exp(x) / np.sum(np.exp(x))
 
 
 class SampleIterator:
@@ -16,20 +25,12 @@ class SampleIterator:
         self._regular = "tunable\(\[(.*?)\]\)"
         self._split = ','
 
-    # def tunable_find(self):
-    #     matches_in = re.findall(self._regular, self._code)
-    #     tunable = []
-    #     for item in matches_in:
-    #         tun = tuple(item.split(self._split))
-    #         tunable.append(tun)
-    #     return tunable
-
-    def iterate_sample(self):
         matches = list(re.finditer(self._regular, self._code))
         matches_update = False
         tunable = []
         for match in reversed(matches):
             options = match.group(1).split(self._split)
+            options = [x.strip() for x in options]
             if len(options) == 0:
                 raise Exception('options\'s len is zero')
             elif len(options) == 1:
@@ -41,20 +42,72 @@ class SampleIterator:
         if matches_update:
             matches = list(re.finditer(self._regular, self._code))
         tunable.reverse()
-        all_comb = itertools.product(*tunable)
+
+        # indices_list = itertools.product(*())
+        # all_comb = [(indices, [tunable[space_i][i] for space_i, i in enumerate(indices)]) for indices in indices_list]
+        # score_list = [[None] * len(space) for space in tunable]
+
         # count = 0
-        instances = []
-        for comb in all_comb:
-            function_code = self._code
-            for match, item in zip(reversed(matches), reversed(comb)):
-                start, end = match.span()
-                function_code = function_code[:start] + item + function_code[end:]
-            # self.save_function(function_code, count)
-            # count += 1
-            instances.append(function_code)
-            # if 'tunable(' in function_code:
-            #     raise Exception('tuneable in function_code')
-        return instances
+        # instances = []
+        # for indices, comb in all_comb:
+        #     function_code = self._code
+        #     for match, item in zip(reversed(matches), reversed(comb)):
+        #         start, end = match.span()
+        #         function_code = function_code[:start] + item + function_code[end:]
+        #     # self.save_function(function_code, count)
+        #     # count += 1
+        #     instances.append((indices, function_code))
+        #     # if 'tunable(' in function_code:
+        #     #     raise Exception('tuneable in function_code')
+        # self.instances = instances
+        self.score_list = [[MIN_SCORE] * len(space) for space in tunable]
+        self.visited_indices = set()
+        self.tunable = tunable
+        self.matches = matches
+
+
+    def calculate_probability(self):
+        probability = []
+        for scores in self.score_list:
+            max_score = max(scores)
+            scores = [x if x != MIN_SCORE else max_score for x in scores]
+            prob = softmax(scores)
+            probability.append(prob)
+        return probability
+    
+
+    def get_instance(self, indices):
+        function_code = self._code
+        for match, space, idx in zip(reversed(self.matches), reversed(self.tunable), reversed(indices)):
+            start, end = match.span()
+            function_code = function_code[:start] + space[idx] + function_code[end:]
+        # self.save_function(function_code, count)
+        # count += 1
+        return function_code
+    
+
+    def batch_sample(self, batch_size):
+        probability = self.calculate_probability()
+        indices_list = []
+        instance_list = []
+        while len(indices_list) < batch_size:
+            indices = []
+            for prob in probability:
+                idx = np.random.choice(len(prob), 1, replace=False, p=prob)
+                indices.append(int(idx))
+            indices = tuple(indices)
+            if indices not in self.visited_indices:
+                self.visited_indices.add(indices)
+                indices_list.append(indices)
+                instance_list.append(self.get_instance(indices))
+        return indices_list, instance_list
+    
+
+    def update_score(self, instance_indices, score_list):
+        for indices, score in zip(instance_indices, score_list):
+            for space_i, idx in enumerate(indices):
+                if score:
+                    self.score_list[space_i][idx] = max(self.score_list[space_i][idx], score)
 
     # def save_function(self, code: str, count: int):
     #     file_name = f"generated_function_{count}.py"
