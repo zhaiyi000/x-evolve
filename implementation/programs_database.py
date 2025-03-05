@@ -231,18 +231,8 @@ class ProgramsDatabase:
                 logging.info('Best score increased to %s', score)
         else:
             score = None
+        return score
 
-        # ======== RZ: profiling ========
-        profiler: profile.Profiler = kwargs.get('profiler', None)
-        if profiler:
-            global_sample_nums = kwargs.get('global_sample_nums', None)
-            sample_time = kwargs.get('sample_time', None)
-            evaluate_time = kwargs.get('evaluate_time', None)
-            program.score = score
-            program.global_sample_nums = global_sample_nums
-            program.sample_time = sample_time
-            program.evaluate_time = evaluate_time
-            profiler.register_function(program)
 
     # def register_program(
     #         self,

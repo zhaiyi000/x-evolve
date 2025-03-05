@@ -84,7 +84,7 @@ def _trim_function_body(generated_code: str) -> str:
 
 def _sample_to_program(
         generated_code: str,
-        version_generated: int | None,
+        # version_generated: int | None,
         template: code_manipulation.Program,
         function_to_evolve: str,
 ) -> tuple[code_manipulation.Function, str]:
@@ -92,12 +92,12 @@ def _sample_to_program(
     RZ: This function removes the code after the generated function body.
     """
     body = _trim_function_body(generated_code)
-    if version_generated is not None:
-        body = code_manipulation.rename_function_calls(
-            code=body,
-            source_name=f'{function_to_evolve}_v{version_generated}',
-            target_name=function_to_evolve
-        )
+    # if version_generated is not None:
+    #     body = code_manipulation.rename_function_calls(
+    #         code=body,
+    #         source_name=f'{function_to_evolve}_v{version_generated}',
+    #         target_name=function_to_evolve
+    #     )
 
     program = copy.deepcopy(template)
     evolved_function = program.get_function(function_to_evolve)
@@ -164,8 +164,8 @@ class Evaluator:
 
     def analyse(
             self,
-            sample: str,
-            version_generated: int | None,
+            sample_list: list[str],
+            # version_generated: int | None,
             **kwargs  # RZ: add this to do profile
     ) -> None:
         """Compiles the sample into a program and executes it on test inputs.
@@ -177,9 +177,20 @@ class Evaluator:
         """
         # RZ: 'new_function' refers to the evolved function ('def' statement + function body)
         # RZ: 'program' is the template code + new_function
-        new_function, program = _sample_to_program(
-            sample, version_generated, self._template, self._function_to_evolve)
-        scores_per_test = {}
+
+        new_function_list = []
+        program_list = []
+        scores_per_test_list = []
+
+        for sample in sample_list:
+            new_function, program = _sample_to_program(
+                sample, self._template, self._function_to_evolve)
+            scores_per_test = {}
+
+            new_function_list.append(new_function)
+            program_list.append(program)
+            scores_per_test_list.append(scores_per_test)
+
 
         time_reset = time.time()
         for current_input in self._inputs:
@@ -187,37 +198,46 @@ class Evaluator:
             # current_input is a key (perhaps in string type)
             # do not ignore this when implementing SandBox !!!
 
-            test_output, runs_ok = self._sandbox.run(
-                program, self._function_to_run, self._function_to_evolve, self._inputs, current_input,
+            result_list = self._sandbox.run(
+                program_list, self._function_to_run, self._function_to_evolve, self._inputs, current_input,
                 self._timeout_seconds
             )
 
-            if runs_ok and not _calls_ancestor(program, self._function_to_evolve) and test_output is not None:
-                if not isinstance(test_output, (int, float)):
-                    print(f'RZ=> Error: test_output is {test_output}')
-                    raise ValueError('@function.run did not return an int/float score.')
-                scores_per_test[current_input] = test_output
+            for (test_output, runs_ok), scores_per_test in zip(result_list, scores_per_test_list):
+                if runs_ok and not _calls_ancestor(program, self._function_to_evolve) and test_output is not None:
+                    if not isinstance(test_output, (int, float)):
+                        print(f'RZ=> Error: test_output is {test_output}')
+                        raise ValueError('@function.run did not return an int/float score.')
+                    scores_per_test[current_input] = test_output
 
         evaluate_time = time.time() - time_reset
 
         # RZ: If 'score_per_test' is not empty, the score of the program will be recorded to the profiler by the 'register_program'.
         # This is because the register_program will do reduction for a given Function score.
         # If 'score_per_test' is empty, we record it to the profiler at once.
-        if scores_per_test:
-            self._database.register_program(
+        # if scores_per_test:
+        score_list = []
+        profiler: profile.Profiler = kwargs.get('profiler', None)
+        global_sample_nums_list = kwargs.get('global_sample_nums_list', None)
+        num_i = 0
+        for new_function, scores_per_test in zip(new_function_list, scores_per_test_list):
+            score = self._database.register_program(
                 new_function,
                 scores_per_test,
                 **kwargs,
                 evaluate_time=evaluate_time
             )
-            return programs_database.reduce_score(scores_per_test)
-        else:
-            profiler: profile.Profiler = kwargs.get('profiler', None)
+            score_list.append(score)
+            # else:
             if profiler:
-                global_sample_nums = kwargs.get('global_sample_nums', None)
                 sample_time = kwargs.get('sample_time', None)
+                global_sample_nums = None
+                if global_sample_nums_list:
+                    global_sample_nums = global_sample_nums_list[num_i]
+                    num_i += 1
                 new_function.global_sample_nums = global_sample_nums
-                new_function.score = None
+                new_function.score = score
                 new_function.sample_time = sample_time
                 new_function.evaluate_time = evaluate_time
                 profiler.register_function(new_function)
+        return score_list

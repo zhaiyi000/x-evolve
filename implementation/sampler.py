@@ -76,14 +76,14 @@ class Sampler:
     def __init__(
             self,
             database: programs_database.ProgramsDatabase,
-            evaluators: Sequence[evaluator.Evaluator],
+            evaluator: evaluator.Evaluator,
             samples_per_prompt: int,
             max_sample_nums: int | None = None,
             llm_class: Type[LLM] = LLM
     ):
         self._samples_per_prompt = samples_per_prompt
         self._database = database
-        self._evaluators = evaluators
+        self._evaluator = evaluator
         self._llm = llm_class(samples_per_prompt)
         self._max_sample_nums = max_sample_nums
 
@@ -103,37 +103,24 @@ class Sampler:
 
             # samples_new = []
             for sample in samples:
-                tune_sampler = sample_iterator.SampleIterator(
-                    code=sample
-                    # sample_name=line_clean[0],
-                    # store_folder_name=store_folder_name,
-                    # regular=f"\[tunable\]\[((([\w.]+)\|)+([\w.]+))*\]",
-                    # regular=f"\[tunable\]\[([\w.]+)\|([\w.]+)*\]",
-                    # regular=f"\[tunable\]\[([\w.]+(?:\|[\w.]+)*)\]",
-                    # regular=line_clean[1],
-                    # split=f",",
-                )
+                tune_sampler = sample_iterator.SampleIterator(code=sample)
+                for sample_i in range(10):
+                    indices, instances = tune_sampler.batch_sample(batch_size=64)
 
-                for sample_i in range(1):
-
-                    indices, instances = tune_sampler.batch_sample(batch_size=3)
-                    # samples_new.extend(instances)
-                    score_list = []
-
-
+                    num_list = []
                     for sample in instances:
                         self._global_sample_nums_plus_one()  # RZ: add _global_sample_nums
                         cur_global_sample_nums = self._get_global_sample_nums()
-                        chosen_evaluator: evaluator.Evaluator = np.random.choice(self._evaluators)
-                        score = chosen_evaluator.analyse(
-                            sample,
-                            prompt.version_generated,
-                            **kwargs,
-                            global_sample_nums=cur_global_sample_nums,
-                            sample_time=sample_time
-                        )
-                        score_list.append(score)
-
+                        num_list.append(cur_global_sample_nums)
+                    
+                    score_list = self._evaluator.analyse(
+                            instances,
+                        # prompt.version_generated,
+                        **kwargs,
+                        global_sample_nums_list=num_list,
+                        sample_time=sample_time
+                    )
+                    
                     tune_sampler.update_score(indices, score_list)
             # except Exception as err:
             #     print('sample error', err)

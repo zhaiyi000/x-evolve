@@ -253,6 +253,31 @@ Redesign the priority logic through (but not limited to):
         # return response_list_final
 
 
+def _compile_and_run_function(program, function_to_run, function_to_evolve, dataset, numba_accelerate):
+    try:
+        # optimize the code (decorate function_to_run with @numba.jit())
+        if numba_accelerate:
+            program = evaluator_accelerate.add_numba_decorator(
+                program=program,
+                function_to_evolve=function_to_evolve
+            )
+        # compile the program, and maps the global func/var/class name to its address
+        all_globals_namespace = {}
+        # execute the program, map func/var/class to global namespace
+        exec(program, all_globals_namespace)
+        # get the pointer of 'function_to_run'
+        function_to_run = all_globals_namespace[function_to_run]
+        # return the execution results
+        results = function_to_run(dataset)
+        # the results must be int or float
+        if not isinstance(results, (int, float)):
+            return None, False
+        return results, True
+    except:
+        # if raise any exception, we assume the execution failed
+        return None, False
+
+
 class Sandbox(evaluator.Sandbox):
     """Sandbox for executing generated code. Implemented by RZ.
 
@@ -270,10 +295,11 @@ class Sandbox(evaluator.Sandbox):
         """
         self._verbose = verbose
         self._numba_accelerate = numba_accelerate
+        self.executor = ProcessPoolExecutor(max_workers=min(os.cpu_count(), 64))
 
     def run(
             self,
-            program: str,
+            program_list: list[str],
             function_to_run: str,  # RZ: refers to the name of the function to run (e.g., 'evaluate')
             function_to_evolve: str,  # RZ: accelerate the code by decorating @numba.jit() on function_to_evolve.
             inputs: Any,  # refers to the dataset
@@ -287,64 +313,50 @@ class Sandbox(evaluator.Sandbox):
         the output of this function is the score of a given program.
         RZ: PLEASE NOTE THAT this SandBox is only designed for bin-packing problem.
         """
+        print(f'launch {len(program_list)} evaluate tasks')
+
         dataset = inputs[test_input]
-        result_queue = multiprocessing.Queue()
-        process = multiprocessing.Process(
-            target=self._compile_and_run_function,
-            args=(program, function_to_run, function_to_evolve, dataset, self._numba_accelerate, result_queue)
-        )
-        process.start()
-        process.join(timeout=timeout_seconds)
-        if process.is_alive():
-            # if the process is not finished in time, we consider the program illegal
-            process.terminate()
-            process.join()
-            results = None, False
-        else:
-            if not result_queue.empty():
-                results = result_queue.get_nowait()
-            else:
-                results = None, False
+        futures = [self.executor.submit(_compile_and_run_function, program, function_to_run, function_to_evolve, dataset, self._numba_accelerate) for program in program_list]
+        result_list = []
+        for future in futures:
+            result = future.result()
+            result_list.append(result)
 
-        if self._verbose:
-            print(f'================= Evaluated Program =================')
-            program_: code_manipulation.Program = code_manipulation.text_to_program(text=program)
-            func_to_evolve_: str = kwargs.get('func_to_evolve', 'priority')
-            function_: code_manipulation.Function = program_.get_function(func_to_evolve_)
-            function_: str = str(function_).strip('\n')
-            print(f'{function_}')
-            print(f'-----------------------------------------------------')
-            print(f'Score: {str(results)}')
-            print(f'=====================================================')
-            print(f'\n\n')
+        print(f'evaluate tasks done')
+        return result_list
+        
+        # result_queue = multiprocessing.Queue()
+        # process = multiprocessing.Process(
+        #     target=self._compile_and_run_function,
+        #     args=(program, function_to_run, function_to_evolve, dataset, self._numba_accelerate, result_queue)
+        # )
+        # process.start()
+        # process.join(timeout=timeout_seconds)
+        # if process.is_alive():
+        #     # if the process is not finished in time, we consider the program illegal
+        #     process.terminate()
+        #     process.join()
+        #     results = None, False
+        # else:
+        #     if not result_queue.empty():
+        #         results = result_queue.get_nowait()
+        #     else:
+        #         results = None, False
 
-        return results
+        # if self._verbose:
+        #     print(f'================= Evaluated Program =================')
+        #     program_: code_manipulation.Program = code_manipulation.text_to_program(text=program)
+        #     func_to_evolve_: str = kwargs.get('func_to_evolve', 'priority')
+        #     function_: code_manipulation.Function = program_.get_function(func_to_evolve_)
+        #     function_: str = str(function_).strip('\n')
+        #     print(f'{function_}')
+        #     print(f'-----------------------------------------------------')
+        #     print(f'Score: {str(results)}')
+        #     print(f'=====================================================')
+        #     print(f'\n\n')
 
-    def _compile_and_run_function(self, program, function_to_run, function_to_evolve, dataset, numba_accelerate,
-                                  result_queue):
-        try:
-            # optimize the code (decorate function_to_run with @numba.jit())
-            if numba_accelerate:
-                program = evaluator_accelerate.add_numba_decorator(
-                    program=program,
-                    function_to_evolve=function_to_evolve
-                )
-            # compile the program, and maps the global func/var/class name to its address
-            all_globals_namespace = {}
-            # execute the program, map func/var/class to global namespace
-            exec(program, all_globals_namespace)
-            # get the pointer of 'function_to_run'
-            function_to_run = all_globals_namespace[function_to_run]
-            # return the execution results
-            results = function_to_run(dataset)
-            # the results must be int or float
-            if not isinstance(results, (int, float)):
-                result_queue.put((None, False))
-                return
-            result_queue.put((results, True))
-        except:
-            # if raise any exception, we assume the execution failed
-            result_queue.put((None, False))
+        # return results
+
 
 
 specification = r'''
