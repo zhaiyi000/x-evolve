@@ -29,6 +29,7 @@ import scipy
 
 from implementation import code_manipulation
 from implementation import config as config_lib
+from implementation import evaluate_function
 import heapq, queue, math
 
 # RZ: I change the original code "tuple[float, ...]" to "Tuple[float, ...]"
@@ -131,38 +132,22 @@ class ProgramsDatabase:
         # self._last_reset_time: float = time.time()
 
     def get_prompt(self) -> Prompt:
-        functions_per_prompt = min(len(self._nodes), self._functions_per_prompt)
-
-        score_list = []
-        for node_i, node in self._nodes.items():
-            score_update = node.score_update - node.visit_count * 0.01
-            score_list.append(score_update)
-
-        max_score = max(score_list)
-        min_score = min(score_list)
-        score_list = []
-        for node_i, node in self._nodes.items():
-            score_update = node.score_update - node.visit_count * 0.01
-            if max_score == min_score:
-                score_update = 1
-            else:
-                score_update = (score_update - min_score) / (max_score - min_score)
-                # score_update = (np.exp(100*score_update) - 1) / (np.exp(100*1) - 1)  
-                score_update = np.exp(200*(score_update-1))
-                
-            score_list.append((score_update, node))
+        nodes = list(self._nodes.values())
+        score_list = [node.score_update for node in nodes]
+        visit_list = [node.visit_count for node in nodes]
+        length_list = [len(str(node.program)) for node in nodes]
         
-        # score_list.sort(key=lambda x: (-x[0], x[1]))
-        # best_nodes = [x[-1] for x in score_list[:functions_per_prompt]]
-        prob = np.array([x[0] for x in score_list])
-        prob = prob / prob.sum()
-        best_nodes = np.random.choice([x[1] for x in score_list], size=functions_per_prompt, p=prob, replace=False)
+        probabilities = evaluate_function.calculate_score(score_list=score_list, visit_list=visit_list, length_list=length_list)
+        
+        functions_per_prompt = min(len(self._nodes), self._functions_per_prompt)
+        best_nodes = np.random.choice(nodes, size=functions_per_prompt, p=probabilities, replace=False)
         best_nodes = list(best_nodes)
 
         best_nodes.sort(key=lambda x: x.score)
 
         sorted_implementations = []
         for node in best_nodes:
+            node.visit_count += 1
             sorted_implementations.append(node.program)
 
         version_generated = len(sorted_implementations) + 1

@@ -1,6 +1,7 @@
 import numpy as np
 import math
-from cluster import Cluster
+from implementation import sample_iterator 
+# from cluster import Cluster
 
 '''
     sequences: 存储每个序列的初始评分,访问次数,序列长度的list[dict[str, Any]]
@@ -9,27 +10,40 @@ from cluster import Cluster
     baseline: 得分最高序列的序列长度,可选项,若不使用,baseline请填-1
     c_1: (1 - math.exp(c_1 * (t_init - 1)))的超参数c_1,为100区分度较明显
 '''
-def calculate_score(sequences: list[Cluster], s_min: float, s_max: float, baseline: int, c_1: float | int):
+def calculate_score(score_list: list, visit_list: list, length_list: list):
     # 转换初始评分
-    transformed_initials = [(s._score - s_min) / (s_max - s_min) for s in sequences]
+    s_min = min(score_list)
+    s_max = max(score_list)
+    if s_max == s_min:
+        transformed_initials = np.ones_like(score_list)
+    else:
+        transformed_initials = [(s - s_min) / (s_max - s_min) for s in score_list]
     '''
     C_v1: 超参数C_v1,f(v)的系数部分,初始为0.1
     C_v2: 超参数C_v2,f(v)的指数部分,初始为3
     C_l1: 超参数C_l1,f(l)的系数部分,初始为0.1
     C_l2: 超参数C_l2,f(l)的指数部分,初始为3
     '''
-    C_v1 = 0.1, C_v2 = 3, C_l1 = 0.1, C_l2 = 3
+    c_v1 = 0.1
+    c_v2 = 3
+    c_l1 = 0.1
+    c_l2 = 3
+    len_baseline = min([length_list[i] for i, score in enumerate(score_list) if score == s_max])
+    c_1 = 100
+    temperature = 0.1
     # 计算每个序列的权重
     weights = []
-    for s, t_init in zip(sequences, transformed_initials):
+    for score, t_init, visit, length in zip(score_list, transformed_initials, visit_list, length_list):
         # 测试了对于小于长度baseline的序列不加分也不减分的情况，区分度不如都减分的情况
-        if baseline > 0:
-            if s._min_length > baseline:
-                weight = s._score - C_v1*s._visit**C_v2*(1 - math.exp(c_1 * (t_init - 1))) - C_l1*(s._min_length-baseline)**C_l2*(1 - math.exp(c_1 * (t_init - 1)))
+        intensity = 1 - math.exp(c_1 * (t_init - 1))
+        if len_baseline > 0:
+            if length > len_baseline:
+                weight = score - c_v1 * (visit ** c_v2) * intensity - c_l1 * ((length / len_baseline) ** c_l2) * intensity
             else:
-                weight = s._score - C_v1*s._visit**C_v2*(1 - math.exp(c_1 * (t_init - 1)))
+                weight = score - c_v1 * (visit ** c_v2) * intensity
         else:
-            weight = s._score - C_v1*s._visit**C_v2*(1 - math.exp(c_1 * (t_init - 1))) - C_l1*s._min_length**C_l2*(1 - math.exp(c_1 * (t_init - 1)))
+            raise Exception('todo')
+            weight = score - c_v1 * (visit ** c_v2) * intensity - c_l1 * ((length / len_baseline) ** c_l2) * intensity
         # print(weight)
         weights.append(weight)
     
@@ -59,11 +73,12 @@ def calculate_score(sequences: list[Cluster], s_min: float, s_max: float, baseli
     scores[index] = 1 - sum(scores[0:index]) - sum(scores[index+1:])
     '''
     # p: 归一化函数的指数部分
-    p = 3
-    total_temp = sum(weights)
-    weights_temp = [w - total_temp for w in weights]
-    total = sum([w**p for w in weights_temp])
-    scores = [w**p / total for w in weights_temp]
-    index = np.argmax(scores)
-    scores[index] = 1 - sum(scores[0:index]) - sum(scores[index+1:])
+    # p = 3
+    # total_temp = sum(weights)
+    # weights_temp = [w - total_temp for w in weights]
+    # total = sum([w**p for w in weights_temp])
+    # scores = [w**p / total for w in weights_temp]
+    # index = np.argmax(scores)
+    # scores[index] = 1 - sum(scores[0:index]) - sum(scores[index+1:])
+    scores = sample_iterator.softmax(weights, temperature)
     return scores
