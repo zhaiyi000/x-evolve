@@ -8,6 +8,8 @@ Model: 大模型的型号
 Provider: 大模型的提供商
 Input_price: 输入的价格,RMB/million tokens
 Output_price: 输出的价格,RMB/million tokens
+Response_score: 记录大模型回复的得分
+Score: 大模型的评分
 '''
 @dataclasses.dataclass
 class LLM:
@@ -22,7 +24,7 @@ class LLM:
 
 '''
 llm_list: 存储所有的大模型的list[LLM]
-basescore: 初始评分
+basescore: 基准评分
 self._Max_score: 最高得分,初始为负无穷
 '''
 class Evaluate_LLM:
