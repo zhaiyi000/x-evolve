@@ -9,8 +9,9 @@ FILE_DEBUG_MODE = False
 MIN_SCORE = -1e10
 
 
-def softmax(x):
+def softmax(x, temperature):
     x = np.array(x)
+    x = x / temperature
     x -= np.max(x)
     return np.exp(x) / np.sum(np.exp(x))
 
@@ -24,6 +25,7 @@ class SampleIterator:
         # self._store_folder_name = store_folder_name
         self._regular = "tunable\(\[(.*?)\]\)"
         self._split = ','
+        self._temperature = 0.1
 
         matches = list(re.finditer(self._regular, self._code))
         matches_update = False
@@ -71,7 +73,7 @@ class SampleIterator:
         for scores in self.score_list:
             max_score = max(scores)
             scores = [x if x != MIN_SCORE else max_score for x in scores]
-            prob = softmax(scores)
+            prob = softmax(scores, self._temperature)
             probability.append(prob)
         return probability
     
@@ -100,6 +102,8 @@ class SampleIterator:
                 self.visited_indices.add(indices)
                 indices_list.append(indices)
                 instance_list.append(self.get_instance(indices))
+            else:
+                print('repeat sample...')
         return indices_list, instance_list
     
 
@@ -108,6 +112,10 @@ class SampleIterator:
             for space_i, idx in enumerate(indices):
                 if score:
                     self.score_list[space_i][idx] = max(self.score_list[space_i][idx], score)
+
+    
+    def get_final_code(self):
+        pass
 
     # def save_function(self, code: str, count: int):
     #     file_name = f"generated_function_{count}.py"

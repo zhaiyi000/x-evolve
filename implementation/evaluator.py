@@ -165,7 +165,6 @@ class Evaluator:
     def analyse(
             self,
             sample: str,
-            island_id: int | None,
             version_generated: int | None,
             **kwargs  # RZ: add this to do profile
     ) -> None:
@@ -207,7 +206,6 @@ class Evaluator:
         if scores_per_test:
             self._database.register_program(
                 new_function,
-                island_id,
                 scores_per_test,
                 **kwargs,
                 evaluate_time=evaluate_time

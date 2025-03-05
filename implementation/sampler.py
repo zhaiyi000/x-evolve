@@ -114,7 +114,7 @@ class Sampler:
                     # split=f",",
                 )
 
-                for sample_i in range(10):
+                for sample_i in range(1):
 
                     indices, instances = tune_sampler.batch_sample(batch_size=3)
                     # samples_new.extend(instances)
@@ -127,7 +127,6 @@ class Sampler:
                         chosen_evaluator: evaluator.Evaluator = np.random.choice(self._evaluators)
                         score = chosen_evaluator.analyse(
                             sample,
-                            prompt.island_id,
                             prompt.version_generated,
                             **kwargs,
                             global_sample_nums=cur_global_sample_nums,
