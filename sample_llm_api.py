@@ -1,6 +1,5 @@
 import dataclasses
 import numpy as np
-from implementation import sample_iterator
 '''
 LLM_Name: 大模型的名字
 API_Key: 调用大模型的密钥
@@ -59,7 +58,7 @@ class Evaluate_LLM:
             self._Max_score = score
         self._llm_list[index].Response_score.append((score-self._basescore, score-self._Max_score))
         self._Max_score = max(self._Max_score, score)
-        
+
         decay_factor = 0.8 # 历史衰减系数
         if len(llm.Response_score) == 1:
             '''
