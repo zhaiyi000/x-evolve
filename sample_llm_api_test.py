@@ -23,7 +23,7 @@ Grok_beta = LLM("Grok-beta", "", "", "xAI", 36.3695, 109.1085, [])
 
 llm_list = [DeepSeek_R1, DeepSeek_V3, Deepseek_R1_distill_qwen_7b, DeepSeek_R1_distill_qwen_32b, GPT_4o, GPT_4o_mini, GPT_o1, GPT_o1_mini, GPT_o3_mini, GPT_o3_mini_high, Claude_3_7_sonnet, Gemini_2_0_flash_001, Gemini_2_0_pro_exp_02_05, Gemini_2_0_flash_thinking_exp, Grok_beta]
 
-llm = Evaluate_LLM(llm_list, 0.0)
+llm = Evaluate_LLM(llm_list, 0.0, 10.0)
 llm.call_llm(DeepSeek_R1, 1.0)
 p = llm.calculate_probability()
 print(p)

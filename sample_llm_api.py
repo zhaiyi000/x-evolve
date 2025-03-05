@@ -26,23 +26,31 @@ class LLM:
 llm_list: 存储所有的大模型的list[LLM]
 basescore: 基准评分
 self._Max_score: 最高得分,初始为负无穷
+Base_price_score: 价格评分的基准值
 '''
 class Evaluate_LLM:
 
-    def __init__(self, llm_list: list[LLM], basescore: float):
+    def __init__(self, llm_list: list[LLM], basescore: float, Base_price_score: float):
         self._llm_list = llm_list
         self._Max_score = float("-inf")
         self._basescore = basescore
+        self._Base_price_score = Base_price_score
+        # 根据价格初始化初始评分
+        self._total_cost = np.sum([llm.Input_price + llm.Output_price for llm in self._llm_list])
         for index in range(len(self._llm_list)):
-            self._llm_list[index].Score = -self._llm_list[index].Input_price - self._llm_list[index].Output_price
+            # 计算价格权重占比
+            cost_ratio = (self._llm_list[index].Input_price + self._llm_list[index].Output_price) / self._total_cost
+            self._llm_list[index].Score = self._Base_price_score * (1 - cost_ratio)
 
     # 将大模型注册到评分器中
     def _register_llm(self, llm: LLM):
         self._llm_list.append(llm)
         index = self._llm_list.index(llm)
         # 根据价格初始化初始评分
-        init_score = -llm.Input_price - llm.Output_price
-        self._llm_list[index].Score = init_score
+        self._total_cost = self._total_cost + llm.Input_price + llm.Output_price
+        # 计算价格权重占比
+        cost_ratio = (llm.Input_price + llm.Output_price) / self._total_cost
+        self._llm_list[index].Score = self._Base_price_score * (1 - cost_ratio)
     
     # 每次调用大模型后,将得分记录到大模型的Response_score中
     def call_llm(self, llm: LLM, score: float):
@@ -51,6 +59,8 @@ class Evaluate_LLM:
             self._Max_score = score
         self._llm_list[index].Response_score.append((score-self._basescore, score-self._Max_score))
         self._Max_score = max(self._Max_score, score)
+        
+        decay_factor = 0.8 # 历史衰减系数
         if len(llm.Response_score) == 1:
             '''
             该模型只被调用过一次
@@ -59,7 +69,7 @@ class Evaluate_LLM:
             '''
             score1 = self._llm_list[index].Response_score[0][0]
             score2 = self._llm_list[index].Response_score[0][1]
-            self._llm_list[index].Score = self._llm_list[index].Score + score1 + score2
+            delta = (score1 + score2) * (1 - decay_factor)
         else:
             '''
             该模型被调用过多次
@@ -70,14 +80,22 @@ class Evaluate_LLM:
             score1 = self._llm_list[index].Response_score[-1][0]
             score2 = self._llm_list[index].Response_score[-1][1]
             score3 = self._llm_list[index].Response_score[-1][0] - self._llm_list[index].Response_score[-2][0]
-            self._llm_list[index].Score = self._llm_list[index].Score + score1 + score2 + score3
+            # 模型调用次数越多,当前次数的权重越大
+            delta = (score1 + score2 + score3) * (1 - decay_factor ** len(llm.Response_score))
+        # 更新模型的评分(平滑过渡)
+        self._llm_list[index].Score = decay_factor * self._llm_list[index].Score + delta
 
     # 计算下次选择大模型时使用的评分概率
     def calculate_probability(self):
         score_list = np.array([llm.Score for llm in self._llm_list])
-        print(score_list)
-        temperature = 1.0
-        probability = sample_iterator.softmax(score_list, temperature)
-        return probability
+        # 标准化得分
+        scores = (score_list - np.min(score_list)) / (np.max(score_list) - np.min(score_list) + 1e-6)
+        # 动态温度调整（鼓励探索）
+        temperature = max(0.5, 1.0 - 0.1 * len(self._llm_list[0].Response_score))
+        # 带平滑的softmax（确保最小概率）
+        exp_scores = np.exp(scores / temperature)
+        probabilities = exp_scores / (exp_scores.sum() + 1e-6)
+        probabilities = 0.8 * probabilities + 0.2 * (1/len(probabilities))  # 混合均匀分布
+        return probabilities
 
 
