@@ -70,6 +70,7 @@ class SampleIterator:
         #     #     raise Exception('tuneable in function_code')
         # self.instances = instances
         self.score_list = [[MIN_SCORE] * len(space) for space in tunable]
+        self.score_record = [[[MIN_SCORE]]* len(space)  for space in tunable]
         self.visited_indices = set()
         self.tunable = tunable
         self.matches = matches
@@ -127,7 +128,20 @@ class SampleIterator:
 
     
     def get_final_code(self):
-        pass
+        top_20_record = [[] for _ in range(len(self.score_record))] # 记录每个tuable的前20评分的选项(score，idx)
+        for idx_,item in enumerate(self.score_record):
+            com_list = []
+            for idx, scores in enumerate(item):
+                com_list += scores
+            com_list.sort(key=lambda x: x[0])
+            top_20_record[idx_] = com_list[:len(com_list)//5]
+        result=[]# 记录评分前20的所有参数组合
+        for i in range(len(top_20_record[0])):
+            comb = []
+            for item in top_20_record:
+                comb.append(item[i][1])
+            result.append(comb)
+        return result
 
     # def save_function(self, code: str, count: int):
     #     file_name = f"generated_function_{count}.py"
