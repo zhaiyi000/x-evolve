@@ -26,6 +26,7 @@ import profile
 
 from implementation import code_manipulation
 from implementation import programs_database
+from implementation import sample_iterator
 
 
 class _FunctionLineVisitor(ast.NodeVisitor):
@@ -83,7 +84,8 @@ def _trim_function_body(generated_code: str) -> str:
 
 
 def _sample_to_program(
-        generated_code: str,
+        sample: sample_iterator.SampleIterator,
+        indices: list[int],
         # version_generated: int | None,
         template: code_manipulation.Program,
         function_to_evolve: str,
@@ -91,6 +93,7 @@ def _sample_to_program(
     """Returns the compiled generated function and the full runnable program.
     RZ: This function removes the code after the generated function body.
     """
+    generated_code = sample.get_instance(indices)
     body = _trim_function_body(generated_code)
     # if version_generated is not None:
     #     body = code_manipulation.rename_function_calls(
@@ -102,7 +105,14 @@ def _sample_to_program(
     program = copy.deepcopy(template)
     evolved_function = program.get_function(function_to_evolve)
     evolved_function.body = body
-    return evolved_function, str(program)
+
+    generated_code = sample.get_template()
+    body = _trim_function_body(generated_code)
+    register = copy.deepcopy(template)
+    register_function = register.get_function(function_to_evolve)
+    register_function.body = body
+
+    return evolved_function, str(program), register_function
 
 
 class Sandbox(ABC):
@@ -164,7 +174,8 @@ class Evaluator:
 
     def analyse(
             self,
-            sample_list: list[str],
+            sample_list: list[sample_iterator.SampleIterator],
+            indices_list: list[int],
             # version_generated: int | None,
             **kwargs  # RZ: add this to do profile
     ) -> None:
@@ -181,15 +192,17 @@ class Evaluator:
         new_function_list = []
         program_list = []
         scores_per_test_list = []
+        register_list = []
 
-        for sample in sample_list:
-            new_function, program = _sample_to_program(
-                sample, self._template, self._function_to_evolve)
+        for sample, indices in zip(sample_list, indices_list):
+            new_function, program, register = _sample_to_program(
+                sample, indices, self._template, self._function_to_evolve)
             scores_per_test = {}
 
             new_function_list.append(new_function)
             program_list.append(program)
             scores_per_test_list.append(scores_per_test)
+            register_list.append(register)
 
 
         time_reset = time.time()
@@ -220,12 +233,12 @@ class Evaluator:
         profiler: profile.Profiler = kwargs.get('profiler', None)
         global_sample_nums_list = kwargs.get('global_sample_nums_list', None)
         num_i = 0
-        for new_function, scores_per_test in zip(new_function_list, scores_per_test_list):
+        for register, new_function, scores_per_test, indices in zip(register_list, new_function_list, scores_per_test_list, indices_list):
             score = self._database.register_program(
-                new_function,
+                register,
                 scores_per_test,
-                **kwargs,
-                evaluate_time=evaluate_time
+                # **kwargs,
+                # evaluate_time=evaluate_time
             )
             score_list.append(score)
             # else:

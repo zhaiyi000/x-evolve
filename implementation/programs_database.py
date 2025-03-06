@@ -88,8 +88,8 @@ class Node:
     visit_count: int
     score: float
     # score_sum: float
-    score_update: float
-    node_id: int
+    # score_update: float
+    # node_id: int
     program: code_manipulation.Function
 
     # @property
@@ -110,30 +110,13 @@ class ProgramsDatabase:
         self._template: code_manipulation.Program = template
         self._function_to_evolve: str = function_to_evolve
         self._functions_per_prompt: int = config.functions_per_prompt
-        # self._pb_c_base = 19652
-        # self._pb_c_init = 1.25
-
-        self._node_id = 0
-        self._nodes: dict[int, Node] = {}
-
-        # # Initialize empty islands.
-        # self._islands: list[Island] = []
-        # for _ in range(config.num_islands):
-        #     self._islands.append(
-        #         Island(template, function_to_evolve, config.functions_per_prompt,
-        #                config.cluster_sampling_temperature_init,
-        #                config.cluster_sampling_temperature_period))
+        self._nodes: dict[str, Node] = {}
         self._best_score: float = -float('inf')
-        # self._best_program_per_island: list[code_manipulation.Function | None] = (
-        #         [None] * config.num_islands)
-        # self._best_scores_per_test_per_island: list[ScoresPerTest | None] = (
-        #         [None] * config.num_islands)
 
-        # self._last_reset_time: float = time.time()
 
     def get_prompt(self) -> Prompt:
         nodes = list(self._nodes.values())
-        score_list = [node.score_update for node in nodes]
+        score_list = [node.score for node in nodes]
         visit_list = [node.visit_count for node in nodes]
         length_list = [len(str(node.program)) for node in nodes]
         
@@ -192,219 +175,27 @@ class ProgramsDatabase:
         return str(prompt)
 
 
-    # def update_recursive(self, node: Node):
-    #     updated_set = set()
-    #     wait_queue = queue.Queue()
-    #     while True:
-    #         if node.parent_id:
-    #             for id in node.parent_id:
-    #                 if id not in updated_set:
-    #                     parent_node = self._nodes[id]
-    #                     if parent_node.score_update < node.score_update:
-    #                         parent_node.score_update = parent_node.score_update + (node.score_update - parent_node.score_update) * 1/2
-    #                         updated_set.add(id)
-    #                         wait_queue.put(parent_node)
-    #         if wait_queue.empty():
-    #             break
-    #         node = wait_queue.get()
-
-
     def register_program(
             self,
             program: code_manipulation.Function,
             scores_per_test: ScoresPerTest,
-            **kwargs  # RZ: add this for profiling
+            # **kwargs  # RZ: add this for profiling
     ) -> None:
         """Registers `program` in the specified island."""
         if scores_per_test:
             score = reduce_score(scores_per_test)
 
-            node = Node(visit_count=0, score=score, score_update=score, node_id=self._node_id, program=program)
-            self._nodes[self._node_id] = node
-            self._node_id += 1
-            # self.update_recursive(node)
+            key_str = str(program)
+            if key_str in self._nodes:
+                node = self._nodes[key_str]
+                node.score = max(node.score, score)
+            else:
+                node = Node(visit_count=0, score=score, program=program)
+                self._nodes[key_str] = node
 
             if score > self._best_score:
-            #     self._best_program_per_island[island_id] = program
-            #     self._best_scores_per_test_per_island[island_id] = scores_per_test
                 self._best_score = score
                 logging.info('Best score increased to %s', score)
         else:
             score = None
         return score
-
-
-    # def register_program(
-    #         self,
-    #         program: code_manipulation.Function,
-    #         # island_id: int | None,
-    #         scores_per_test: ScoresPerTest,
-    #         **kwargs  # RZ: add this for profiling
-    # ) -> None:
-    #     """Registers `program` in the database."""
-        # In an asynchronous implementation we should consider the possibility of
-        # registering a program on an island that had been reset after the prompt
-        # was generated. Leaving that out here for simplicity.
-        # if island_id is None:
-        #     # This is a program added at the beginning, so adding it to all islands.
-        #     for island_id in range(len(self._islands)):
-        #         self._register_program_in_island(program, island_id, scores_per_test, **kwargs)
-        # else:
-        # self._register_program_in_island(program, scores_per_test, **kwargs)
-
-        # # Check whether it is time to reset an island.
-        # if time.time() - self._last_reset_time > self._config.reset_period:
-        #     self._last_reset_time = time.time()
-        #     self.reset_islands()
-
-    # def reset_islands(self) -> None:
-    #     """Resets the weaker half of islands."""
-    #     # We sort best scores after adding minor noise to break ties.
-    #     indices_sorted_by_score: np.ndarray = np.argsort(
-    #         self._best_score_per_island +
-    #         np.random.randn(len(self._best_score_per_island)) * 1e-6)
-    #     num_islands_to_reset = self._config.num_islands // 2
-    #     reset_islands_ids = indices_sorted_by_score[:num_islands_to_reset]
-    #     keep_islands_ids = indices_sorted_by_score[num_islands_to_reset:]
-    #     for island_id in reset_islands_ids:
-    #         self._islands[island_id] = Island(
-    #             self._template,
-    #             self._function_to_evolve,
-    #             self._config.functions_per_prompt,
-    #             self._config.cluster_sampling_temperature_init,
-    #             self._config.cluster_sampling_temperature_period)
-    #         self._best_score_per_island[island_id] = -float('inf')
-    #         founder_island_id = np.random.choice(keep_islands_ids)
-    #         founder = self._best_program_per_island[founder_island_id]
-    #         founder_scores = self._best_scores_per_test_per_island[founder_island_id]
-    #         self._register_program_in_island(founder, island_id, founder_scores)
-
-
-# class Island:
-#     """A sub-population of the programs database."""
-
-#     def __init__(
-#             self,
-#             template: code_manipulation.Program,
-#             function_to_evolve: str,
-#             functions_per_prompt: int,
-#             cluster_sampling_temperature_init: float,
-#             cluster_sampling_temperature_period: int,
-#     ) -> None:
-#         self._template: code_manipulation.Program = template
-#         self._function_to_evolve: str = function_to_evolve
-#         self._functions_per_prompt: int = functions_per_prompt
-#         self._cluster_sampling_temperature_init = cluster_sampling_temperature_init
-#         self._cluster_sampling_temperature_period = (
-#             cluster_sampling_temperature_period)
-
-#         self._clusters: dict[Signature, Cluster] = {}
-#         self._num_programs: int = 0
-
-#     def register_program(
-#             self,
-#             program: code_manipulation.Function,
-#             scores_per_test: ScoresPerTest,
-#     ) -> None:
-#         """Stores a program on this island, in its appropriate cluster."""
-#         signature = _get_signature(scores_per_test)
-#         if signature not in self._clusters:
-#             score = reduce_score(scores_per_test)
-#             self._clusters[signature] = Cluster(score, program)
-#         else:
-#             self._clusters[signature].register_program(program)
-#         self._num_programs += 1
-
-#     def get_prompt(self) -> tuple[str, int]:
-#         """Constructs a prompt containing functions from this island."""
-#         signatures = list(self._clusters.keys())
-#         cluster_scores = np.array(
-#             [self._clusters[signature].score for signature in signatures])
-
-#         # Convert scores to probabilities using softmax with temperature schedule.
-#         period = self._cluster_sampling_temperature_period
-#         temperature = self._cluster_sampling_temperature_init * (
-#                 1 - (self._num_programs % period) / period)
-#         probabilities = _softmax(cluster_scores, temperature)
-
-#         # At the beginning of an experiment when we have few clusters, place fewer
-#         # programs into the prompt.
-#         functions_per_prompt = min(len(self._clusters), self._functions_per_prompt)
-
-#         idx = np.random.choice(
-#             len(signatures), size=functions_per_prompt, p=probabilities)
-#         chosen_signatures = [signatures[i] for i in idx]
-#         implementations = []
-#         scores = []
-#         for signature in chosen_signatures:
-#             cluster = self._clusters[signature]
-#             implementations.append(cluster.sample_program())
-#             scores.append(cluster.score)
-
-#         indices = np.argsort(scores)
-#         sorted_implementations = [implementations[i] for i in indices]
-#         version_generated = len(sorted_implementations) + 1
-#         return self._generate_prompt(sorted_implementations), version_generated
-
-#     def _generate_prompt(
-#             self,
-#             implementations: Sequence[code_manipulation.Function]) -> str:
-#         """Creates a prompt containing a sequence of function `implementations`."""
-#         implementations = copy.deepcopy(implementations)  # We will mutate these.
-
-#         # Format the names and docstrings of functions to be included in the prompt.
-#         versioned_functions: list[code_manipulation.Function] = []
-#         for i, implementation in enumerate(implementations):
-#             new_function_name = f'{self._function_to_evolve}_v{i}'
-#             implementation.name = new_function_name
-#             # Update the docstring for all subsequent functions after `_v0`.
-#             if i >= 1:
-#                 implementation.docstring = (
-#                     f'Improved version of `{self._function_to_evolve}_v{i - 1}`.')
-#             # If the function is recursive, replace calls to itself with its new name.
-#             implementation = code_manipulation.rename_function_calls(
-#                 str(implementation), self._function_to_evolve, new_function_name)
-#             versioned_functions.append(
-#                 code_manipulation.text_to_function(implementation))
-
-#         # Create the header of the function to be generated by the LLM.
-#         next_version = len(implementations)
-#         new_function_name = f'{self._function_to_evolve}_v{next_version}'
-#         header = dataclasses.replace(
-#             implementations[-1],
-#             name=new_function_name,
-#             body='',
-#             docstring=('Improved version of '
-#                        f'`{self._function_to_evolve}_v{next_version - 1}`.'),
-#         )
-#         versioned_functions.append(header)
-
-#         # Replace functions in the template with the list constructed here.
-#         prompt = dataclasses.replace(self._template, functions=versioned_functions)
-#         return str(prompt)
-
-
-# class Cluster:
-#     """A cluster of programs on the same island and with the same Signature."""
-
-#     def __init__(self, score: float, implementation: code_manipulation.Function):
-#         self._score = score
-#         self._programs: list[code_manipulation.Function] = [implementation]
-#         self._lengths: list[int] = [len(str(implementation))]
-
-#     @property
-#     def score(self) -> float:
-#         """Reduced score of the signature that this cluster represents."""
-#         return self._score
-
-#     def register_program(self, program: code_manipulation.Function) -> None:
-#         """Adds `program` to the cluster."""
-#         self._programs.append(program)
-#         self._lengths.append(len(str(program)))
-
-#     def sample_program(self) -> code_manipulation.Function:
-#         """Samples a program, giving higher probability to shorther programs."""
-#         normalized_lengths = (np.array(self._lengths) - min(self._lengths)) / (
-#                 max(self._lengths) + 1e-6)
-#         probabilities = _softmax(-normalized_lengths, temperature=1.0)
-#         return np.random.choice(self._programs, p=probabilities)

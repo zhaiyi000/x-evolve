@@ -28,6 +28,7 @@ from implementation import evaluator
 from implementation import programs_database
 from implementation import sampler
 from implementation import profile
+from implementation import sample_iterator
 
 
 def _extract_function_names(specification: str) -> Tuple[str, str]:
@@ -87,7 +88,7 @@ def main(
 
     # We send the initial implementation to be analysed by one of the evaluators.
     initial = template.get_function(function_to_evolve).body
-    evalor.analyse([initial], profiler=profiler)
+    evalor.analyse([sample_iterator.SampleIterator(initial)], [[]], profiler=profiler)
 
     # Set global max sample nums.
     samplers = [sampler.Sampler(database, evalor, config.samples_per_prompt, max_sample_nums=max_sample_nums, llm_class=class_config.llm_class)

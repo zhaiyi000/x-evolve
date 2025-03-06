@@ -47,6 +47,9 @@ class Profiler:
         self._each_sample_evaluate_failed_program_num = []
         self._each_sample_tot_sample_time = []
         self._each_sample_tot_evaluate_time = []
+        self._log_file = 'profile.log'
+        if os.path.exists(self._log_file):
+            os.remove(self._log_file)
 
     def _write_tensorboard(self):
         if not self._log_dir:
@@ -106,14 +109,15 @@ class Profiler:
         evaluate_time = function.evaluate_time
         score = function.score
         # log attributes of the function
-        print(f'================= Evaluated Function =================')
-        print(f'{function_str}')
-        print(f'------------------------------------------------------')
-        print(f'Score        : {str(score)}')
-        print(f'Sample time  : {str(sample_time)}')
-        print(f'Evaluate time: {str(evaluate_time)}')
-        print(f'Sample orders: {str(sample_orders)}')
-        print(f'======================================================\n\n')
+        with open(self._log_file, 'a') as f:
+            f.write(f'================= Evaluated Function =================\n')
+            f.write(f'{function_str}\n')
+            f.write(f'------------------------------------------------------\n')
+            f.write(f'Score        : {str(score)}\n')
+            f.write(f'Sample time  : {str(sample_time)}\n')
+            f.write(f'Evaluate time: {str(evaluate_time)}\n')
+            f.write(f'Sample orders: {str(sample_orders)}\n')
+            f.write(f'======================================================\n\n\n')
 
         # update best function
         if function.score is not None and score > self._cur_best_program_score:

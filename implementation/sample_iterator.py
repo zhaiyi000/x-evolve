@@ -9,11 +9,18 @@ FILE_DEBUG_MODE = False
 MIN_SCORE = -1e10
 
 
-def softmax(x, temperature):
+def softmax(x, temperature, min_prob=1e-6):
     x = np.array(x)
     x = x / temperature
     x -= np.max(x)
-    return np.exp(x) / np.sum(np.exp(x))
+    exp_x = np.exp(x)
+    probs = exp_x / np.sum(exp_x)
+    
+     # 强制最小概率保护
+    probs = np.clip(probs, min_prob, None)
+    probs = probs / np.sum(probs)
+    
+    return probs
 
 
 class SampleIterator:
@@ -88,6 +95,10 @@ class SampleIterator:
         return function_code
     
 
+    def get_template(self):
+        return self._code
+    
+
     def batch_sample(self, batch_size):
         probability = self.calculate_probability()
         indices_list = []
@@ -101,7 +112,8 @@ class SampleIterator:
             if indices not in self.visited_indices:
                 self.visited_indices.add(indices)
                 indices_list.append(indices)
-                instance_list.append(self.get_instance(indices))
+                # instance_list.append(self.get_instance(indices))
+                instance_list.append(self)
             else:
                 print('repeat sample...')
         return indices_list, instance_list

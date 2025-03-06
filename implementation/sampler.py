@@ -108,13 +108,14 @@ class Sampler:
                     indices, instances = tune_sampler.batch_sample(batch_size=64)
 
                     num_list = []
-                    for sample in instances:
+                    for _ in instances:
                         self._global_sample_nums_plus_one()  # RZ: add _global_sample_nums
                         cur_global_sample_nums = self._get_global_sample_nums()
                         num_list.append(cur_global_sample_nums)
                     
                     score_list = self._evaluator.analyse(
-                            instances,
+                        instances,
+                        indices,
                         # prompt.version_generated,
                         **kwargs,
                         global_sample_nums_list=num_list,
