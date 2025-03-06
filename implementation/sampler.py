@@ -24,6 +24,23 @@ import time
 from implementation import evaluator
 from implementation import programs_database
 from implementation import sample_iterator
+from implementation import code_manipulation
+import copy
+
+
+def sample_to_program(
+        generated_code: str,
+        template: code_manipulation.Program,
+        function_to_evolve: str,
+) -> tuple[code_manipulation.Function, str]:
+    """Returns the compiled generated function and the full runnable program.
+    RZ: This function removes the code after the generated function body.
+    """
+    body = evaluator._trim_function_body(generated_code)
+    program = copy.deepcopy(template)
+    evolved_function = program.get_function(function_to_evolve)
+    evolved_function.body = body
+    return evolved_function
 
 
 class LLM(ABC):
@@ -77,6 +94,8 @@ class Sampler:
     def __init__(
             self,
             database: programs_database.ProgramsDatabase,
+            template: code_manipulation.Program,
+            function_to_evolve: str,
             evaluator: evaluator.Evaluator,
             samples_per_prompt: int,
             max_sample_nums: int | None = None,
@@ -87,6 +106,8 @@ class Sampler:
         self._evaluator = evaluator
         self._llm = llm_class(samples_per_prompt)
         self._max_sample_nums = max_sample_nums
+        self._template = template
+        self._function_to_evolve = function_to_evolve
 
     def sample(self, **kwargs):
         """Continuously gets prompts, samples programs, sends them for analysis.
@@ -111,6 +132,8 @@ class Sampler:
                 self._global_spaces_nums_plus_one()
                 tune_sampler = sample_iterator.SampleIterator(code=sample)
                 batch_size = 64
+                MIN_SCORE = -1e10
+                max_score = MIN_SCORE
                 while True:
                     indices, instances = tune_sampler.batch_sample(batch_size=batch_size)
 
@@ -128,13 +151,22 @@ class Sampler:
                         global_sample_nums_list=num_list,
                         sample_time=sample_time
                     )
+                    score_list = [max_score, *[x for x in score_list if x]]
+                    max_score = max(score_list)
                     
                     if tune_sampler.update_score(indices, score_list) is False:
                         print('sampler suggest should end sample, break')
                         break
-            # except Exception as err:
-            #     print('sample error', err)
-            #     time.sleep(1)
+
+                if max_score != MIN_SCORE:
+                    function_code = tune_sampler.get_final_code()
+                    new_function = sample_to_program(
+                        function_code, self._template, self._function_to_evolve)
+
+                    self._database.register_program(
+                        new_function,
+                        max_score,
+                    )
 
     def _get_global_sample_nums(self) -> int:
         return self.__class__._global_samples_nums

@@ -88,10 +88,12 @@ def main(
 
     # We send the initial implementation to be analysed by one of the evaluators.
     initial = template.get_function(function_to_evolve).body
-    evaluator_ins.analyse([sample_iterator.SampleIterator(initial)], [[]], profiler=profiler)
+    score_list = evaluator_ins.analyse([sample_iterator.SampleIterator(initial)], [[]], profiler=profiler)
+    new_function = sampler.sample_to_program(initial, template, function_to_evolve)
+    database.register_program(new_function, max(score_list))
 
     # Set global max sample nums.
-    sampler_ins = sampler.Sampler(database, evaluator_ins, config.samples_per_prompt, max_sample_nums=max_sample_nums, llm_class=class_config.llm_class)
+    sampler_ins = sampler.Sampler(database, template, function_to_evolve, evaluator_ins, config.samples_per_prompt, max_sample_nums=max_sample_nums, llm_class=class_config.llm_class)
 
     # This loop can be executed in parallel on remote sampler machines. As each
     # sampler enters an infinite loop, without parallelization only the first

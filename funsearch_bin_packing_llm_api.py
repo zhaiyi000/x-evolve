@@ -46,7 +46,7 @@ def _trim_preface_of_body(sample: str) -> str:
     code_list = re.findall('```python(.*?)```', sample, flags=re.DOTALL)
     code_core = None
     for code in code_list:
-        if '\n'+start_str in code and code.count('\n'+end_str) == 1:
+        if '\n'+start_str in code:  # and code.count('\n'+end_str) == 1:
             code_core = code
             break
     if code_core is None:
@@ -199,12 +199,11 @@ class LLMAPI(sampler.LLM):
         #                      'Only output the Python code, no descriptions.')
         additional_prompt = \
 """
-Complete a different and more complex Python function. Be creative and you can insert multiple if-else and for-loop in the code logic. Evolve a better priority function in two ways:
+Complete a different and more complex Python function. Be creative and you can insert multiple if-else and for-loop in the code logic. Only output the Python code, no descriptions. Evolve a better priority function in two ways:
   1. Propose a better strategy for deciding the priority in an online bin-packing problem.
   2. Identify places in the code that might offer tuning options. Wherever you see potential tuning parameters, wrap them in a tunable([...]) function call. Do not need the tunable function implementation. For example:
     - `if remaining_capacity > tunable([0.2, 0.5]):`
     - `sorted(items, key=lambda x: tunable([x.size, x.weight]))`
-
 Prioritize strategy evolution first, then parameter tuning.
 """
         self._additional_prompt = additional_prompt

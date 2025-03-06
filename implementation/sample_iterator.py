@@ -24,10 +24,14 @@ def softmax(x, temperature, min_prob=1e-6):
 
 
 class SampleIterator:
+
+    max_score_global = MIN_SCORE
+
     def __init__(
         self, code: str
     ):
         self._code = code
+        # self._final_code = None
         # self._sample_name = sample_name
         # self._store_folder_name = store_folder_name
         self._regular = "tunable\(\[(.*?)\]\)"
@@ -70,8 +74,7 @@ class SampleIterator:
         #     #     raise Exception('tuneable in function_code')
         # self.instances = instances
         self.score_list = [[MIN_SCORE] * len(space) for space in tunable]
-        self.score_record = [[[MIN_SCORE]]* len(space)  for space in tunable]
-        self.visited_indices = set()
+        self.visited = {}
         self.tunable = tunable
         self.matches = matches
         self.best_score = MIN_SCORE
@@ -99,8 +102,8 @@ class SampleIterator:
         return function_code
     
 
-    def get_template(self):
-        return self._code
+    # def get_template(self):
+    #     return self._code
     
 
     def batch_sample(self, batch_size):
@@ -108,14 +111,14 @@ class SampleIterator:
         indices_list = []
         instance_list = []
         try_cnt = 0
-        while len(indices_list) < batch_size and try_cnt <= batch_size:
+        while len(indices_list) < batch_size and try_cnt < batch_size:
             indices = []
             for prob in probability:
                 idx = np.random.choice(len(prob), 1, replace=False, p=prob)
                 indices.append(int(idx))
             indices = tuple(indices)
-            if indices not in self.visited_indices:
-                self.visited_indices.add(indices)
+            if indices not in self.visited:
+                self.visited[indices] = MIN_SCORE
                 indices_list.append(indices)
                 # instance_list.append(self.get_instance(indices))
                 instance_list.append(self)
@@ -130,38 +133,57 @@ class SampleIterator:
     def update_score(self, instance_indices, score_list):
         best_score = MIN_SCORE
         for indices, score in zip(instance_indices, score_list):
-            for space_i, idx in enumerate(indices):
-                if score:
+            if score:
+                assert indices in self.visited
+                self.visited[indices] = score
+                for space_i, idx in enumerate(indices):
                     best_score = max(best_score, score)
                     self.score_list[space_i][idx] = max(self.score_list[space_i][idx], score)
         if best_score > self.best_score:
+            self.__class__.max_score_global = max(self.__class__.max_score_global, best_score)
             self.best_score = best_score
             self.no_update_cnt = 0
         else:
             self.no_update_cnt += 1
 
-        print(f'this best socre: {best_score}; best score: {self.best_score}; space size: {self.space_size}; measure cnt: {len(self.visited_indices)}')
-        if self.space_size == len(self.visited_indices) or self.no_update_cnt == 2:
+        print(f'this best socre: {best_score}; best score: {self.best_score}; global score: {self.__class__.max_score_global}; space size: {self.space_size}; measure cnt: {len(self.visited)}')
+        factor = 4 if self.best_score == self.__class__.max_score_global else 1
+        if self.space_size == len(self.visited) or self.no_update_cnt == 5 * factor:
             return False
         else:
             return True
 
     
     def get_final_code(self):
-        top_20_record = [[] for _ in range(len(self.score_record))] # 记录每个tuable的前20评分的选项(score，idx)
-        for idx_,item in enumerate(self.score_record):
-            com_list = []
-            for idx, scores in enumerate(item):
-                com_list += scores
-            com_list.sort(key=lambda x: x[0])
-            top_20_record[idx_] = com_list[:len(com_list)//5]
-        result=[]# 记录评分前20的所有参数组合
-        for i in range(len(top_20_record[0])):
-            comb = []
-            for item in top_20_record:
-                comb.append(item[i][1])
-            result.append(comb)
-        return result
+        top_cnt = 64
+        reocrds = list(self.visited.items())
+        np.random.shuffle(reocrds)
+        reocrds.sort(key=lambda x: x[1], reverse=True)
+        reocrds = reocrds[:top_cnt]
+        indices_list = [x[0] for x in reocrds]
+        function_code = self._code
+        space_i = len(self.tunable) - 1
+        for match, space in zip(reversed(self.matches), reversed(self.tunable)):
+            idx_set = set()
+            for indices in indices_list:
+                idx_set.add(indices[space_i])
+            start, end = match.span()
+            if len(idx_set) == 0:
+                raise Exception('len idx set equal 0')
+            elif len(idx_set) == 1:
+                replace_str = space[list(idx_set)[0]]
+            else:
+                idx_list = list(idx_set)
+                idx_list.sort()
+                replace_str = 'tunable(['
+                for idx_i, idx in enumerate(idx_list):
+                    if idx_i != 0:
+                        replace_str += ', '
+                    replace_str += space[idx]
+                replace_str += '])'
+            function_code = function_code[:start] + replace_str + function_code[end:]
+            space_i -= 1
+        return function_code
 
     # def save_function(self, code: str, count: int):
     #     file_name = f"generated_function_{count}.py"

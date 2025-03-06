@@ -182,20 +182,21 @@ class ProgramsDatabase:
             # **kwargs  # RZ: add this for profiling
     ) -> None:
         """Registers `program` in the specified island."""
-        if scores_per_test:
+        if isinstance(scores_per_test, np.float64):
+            score = scores_per_test
+        elif isinstance(scores_per_test, ScoresPerTest):
             score = reduce_score(scores_per_test)
-
-            key_str = str(program)
-            if key_str in self._nodes:
-                node = self._nodes[key_str]
-                node.score = max(node.score, score)
-            else:
-                node = Node(visit_count=0, score=score, program=program)
-                self._nodes[key_str] = node
-
-            if score > self._best_score:
-                self._best_score = score
-                logging.info('Best score increased to %s', score)
         else:
-            score = None
-        return score
+            raise Exception('unkonw data type')
+
+        key_str = str(program)
+        if key_str in self._nodes:
+            node = self._nodes[key_str]
+            node.score = max(node.score, score)
+        else:
+            node = Node(visit_count=0, score=score, program=program)
+            self._nodes[key_str] = node
+
+        if score > self._best_score:
+            self._best_score = score
+            logging.info('Best score increased to %s', score)

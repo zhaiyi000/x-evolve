@@ -106,13 +106,13 @@ def _sample_to_program(
     evolved_function = program.get_function(function_to_evolve)
     evolved_function.body = body
 
-    generated_code = sample.get_template()
-    body = _trim_function_body(generated_code)
-    register = copy.deepcopy(template)
-    register_function = register.get_function(function_to_evolve)
-    register_function.body = body
+    # generated_code = sample.get_template()
+    # body = _trim_function_body(generated_code)
+    # register = copy.deepcopy(template)
+    # register_function = register.get_function(function_to_evolve)
+    # register_function.body = body
 
-    return evolved_function, str(program), register_function
+    return evolved_function, str(program)
 
 
 class Sandbox(ABC):
@@ -192,17 +192,17 @@ class Evaluator:
         new_function_list = []
         program_list = []
         scores_per_test_list = []
-        register_list = []
+        # register_list = []
 
         for sample, indices in zip(sample_list, indices_list):
-            new_function, program, register = _sample_to_program(
+            new_function, program = _sample_to_program(
                 sample, indices, self._template, self._function_to_evolve)
             scores_per_test = {}
 
             new_function_list.append(new_function)
             program_list.append(program)
             scores_per_test_list.append(scores_per_test)
-            register_list.append(register)
+            # register_list.append(register)
 
 
         time_reset = time.time()
@@ -233,13 +233,14 @@ class Evaluator:
         profiler: profile.Profiler = kwargs.get('profiler', None)
         global_sample_nums_list = kwargs.get('global_sample_nums_list', None)
         num_i = 0
-        for register, new_function, scores_per_test, indices in zip(register_list, new_function_list, scores_per_test_list, indices_list):
-            score = self._database.register_program(
-                register,
-                scores_per_test,
-                # **kwargs,
-                # evaluate_time=evaluate_time
-            )
+        for new_function, scores_per_test, indices in zip(new_function_list, scores_per_test_list, indices_list):
+            # score = self._database.register_program(
+            #     register,
+            #     scores_per_test,
+            #     # **kwargs,
+            #     # evaluate_time=evaluate_time
+            # )
+            score = programs_database.reduce_score(scores_per_test) if scores_per_test else None
             score_list.append(score)
             # else:
             if profiler:
