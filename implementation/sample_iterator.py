@@ -32,7 +32,7 @@ class SampleIterator:
         # self._store_folder_name = store_folder_name
         self._regular = "tunable\(\[(.*?)\]\)"
         self._split = ','
-        self._temperature = 0.1
+        self._temperature = 1
 
         matches = list(re.finditer(self._regular, self._code))
         matches_update = False
@@ -74,6 +74,9 @@ class SampleIterator:
         self.visited_indices = set()
         self.tunable = tunable
         self.matches = matches
+        self.best_score = MIN_SCORE
+        self.no_update_cnt = 0
+        self.space_size = np.prod([len(space) for space in tunable])
 
 
     def calculate_probability(self):
@@ -104,7 +107,8 @@ class SampleIterator:
         probability = self.calculate_probability()
         indices_list = []
         instance_list = []
-        while len(indices_list) < batch_size:
+        try_cnt = 0
+        while len(indices_list) < batch_size and try_cnt <= batch_size:
             indices = []
             for prob in probability:
                 idx = np.random.choice(len(prob), 1, replace=False, p=prob)
@@ -115,16 +119,32 @@ class SampleIterator:
                 indices_list.append(indices)
                 # instance_list.append(self.get_instance(indices))
                 instance_list.append(self)
+                try_cnt = 0
             else:
-                print('repeat sample...')
+                try_cnt += 1
+                print('.', end='')
+        print()
         return indices_list, instance_list
     
 
     def update_score(self, instance_indices, score_list):
+        best_score = MIN_SCORE
         for indices, score in zip(instance_indices, score_list):
             for space_i, idx in enumerate(indices):
                 if score:
+                    best_score = max(best_score, score)
                     self.score_list[space_i][idx] = max(self.score_list[space_i][idx], score)
+        if best_score > self.best_score:
+            self.best_score = best_score
+            self.no_update_cnt = 0
+        else:
+            self.no_update_cnt += 1
+
+        print(f'this best socre: {best_score}; best score: {self.best_score}; space size: {self.space_size}; measure cnt: {len(self.visited_indices)}')
+        if self.space_size == len(self.visited_indices) or self.no_update_cnt == 2:
+            return False
+        else:
+            return True
 
     
     def get_final_code(self):

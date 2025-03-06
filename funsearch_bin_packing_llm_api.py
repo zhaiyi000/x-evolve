@@ -121,37 +121,37 @@ def request(prompt):
             }
             provider = 'DeepInfra'
 
-            # response = requests.post('https://ark.cn-beijing.volces.com/api/v3/chat/completions', headers=headers, json={
-            #     # 'model': 'ep-20250227102412-tfkv8',  # v3
-            #     'model': 'ep-20250303202036-j6hfh',  # r1
-            #     'messages': [
-            #         {
-            #             "role": "system",
-            #             "content": "You are a helpful assistant."
-            #         },
-            #         {
-            #             "content": prompt,
-            #             "role": "user"
-            #         }
-            #     ],
-            #     # 'provider': {
-            #     #     'order': [
-            #     #         provider,
-            #     #     ],
-            #     #     'allow_fallbacks': False
-            #     # },
-            # })
+            response = requests.post('https://ark.cn-beijing.volces.com/api/v3/chat/completions', headers=headers, json={
+                'model': 'ep-20250227102412-tfkv8',  # v3
+                # 'model': 'ep-20250303202036-j6hfh',  # r1
+                'messages': [
+                    {
+                        "role": "system",
+                        "content": "You are a helpful assistant."
+                    },
+                    {
+                        "content": prompt,
+                        "role": "user"
+                    }
+                ],
+                # 'provider': {
+                #     'order': [
+                #         provider,
+                #     ],
+                #     'allow_fallbacks': False
+                # },
+            })
 
-            # if response.status_code != 200:
-            #     print('response.status_code', response.status_code, response.text)
-            #     raise Exception('request net error')
+            if response.status_code != 200:
+                print('response.status_code', response.status_code, response.text)
+                raise Exception('request net error')
 
             
 
-            # data = json.loads(response.text)
+            data = json.loads(response.text)
 
-            with open('data.json', 'r') as f:
-                data = json.load(f)
+            # with open('data.json', 'r') as f:
+            #     data = json.load(f)
 
             # if data['provider'] != provider:
             #     print(f'specific provider: {provider}, actual provicer: {data["provider"]}')
@@ -199,30 +199,13 @@ class LLMAPI(sampler.LLM):
         #                      'Only output the Python code, no descriptions.')
         additional_prompt = \
 """
-I am developing a priority function for an online bin-packing problem aiming to minimize the number of used bins. Based on the provided **Python reference implementations**, please:
+Complete a different and more complex Python function. Be creative and you can insert multiple if-else and for-loop in the code logic. Evolve a better priority function in two ways:
+  1. Propose a better strategy for deciding the priority in an online bin-packing problem.
+  2. Identify places in the code that might offer tuning options. Wherever you see potential tuning parameters, wrap them in a tunable([...]) function call. Do not need the tunable function implementation. For example:
+    - `if remaining_capacity > tunable([0.2, 0.5]):`
+    - `sorted(items, key=lambda x: tunable([x.size, x.weight]))`
 
-### Strategic Optimization
-Redesign the priority logic through (but not limited to):
-1. **Alternative Heuristic Formulations**
-   (e.g., hybrid strategies combining size/weight)
-2. **Dynamic Adjustment Mechanisms**
-   (e.g., adapt parameters based on remaining capacity or item arrival rate)
-3. **Context-aware Decision Branching**
-   (e.g., switch heuristics if item sizes follow a tunable(['uniform', 'skewed']) distribution)
-
-### Parameterization
-1. **Identify Tunable Elements** in code segments, including (but not limited to):
-   • Numerical constants (e.g., `weight = tunable([0.5, 1.0, 2.0]`)
-   • Conditional thresholds (e.g., `if remaining_capacity > tunable([0.2, 0.5])`)
-   • Strategy flags (e.g., `use_heuristic = tunable(['best_fit', 'worst_fit'])`)
-   • Code statements (e.g., `sorted(items, key=lambda x: tunable([x.size, x.weight]))`)
-
-2. **Replacement Format**:
-   Use `tunable([option1, option2, ...])` for direct value replacement.
-   **Validation**:
-   • Example valid usage:
-     `if remaining_capacity > tunable([0.2, 0.5]):`
-     `priority = size * tunable([0.5, 1.0]) + weight * tunable([0.5, 1.0])`
+Prioritize strategy evolution first, then parameter tuning.
 """
         self._additional_prompt = additional_prompt
         self._trim = trim
@@ -437,7 +420,7 @@ if __name__ == '__main__':
     config = config.Config(samples_per_prompt=1, evaluate_timeout_seconds=30)
 
     bin_packing_or3 = {'OR3': bin_packing_utils.datasets['OR3']}
-    global_max_sample_num = 1000  # if it is set to None, funsearch will execute an endless loop
+    global_max_sample_num = 300  # if it is set to None, funsearch will execute an endless loop
     import shutil, os
     log_dir = f'logs'
     if os.path.exists(log_dir):

@@ -72,6 +72,7 @@ class Sampler:
     """Node that samples program continuations and sends them for analysis.
     """
     _global_samples_nums: int = 1  # RZ: this variable records the global sample nums
+    _global_spaces_nums: int = 1
 
     def __init__(
             self,
@@ -92,7 +93,7 @@ class Sampler:
         """
         while True:
             # stop the search process if hit global max sample nums
-            if self._max_sample_nums and self.__class__._global_samples_nums >= self._max_sample_nums:
+            if self._max_sample_nums and self.__class__._global_spaces_nums >= self._max_sample_nums:
                 break
             # try:
             prompt = self._database.get_prompt()
@@ -103,9 +104,15 @@ class Sampler:
 
             # samples_new = []
             for sample in samples:
+                print('-------------------')
+                print(sample)
+                print(f'call llm times: {self._get_global_spaces_nums()}')
+                print('-------------------\n\n')
+                self._global_spaces_nums_plus_one()
                 tune_sampler = sample_iterator.SampleIterator(code=sample)
-                for sample_i in range(10):
-                    indices, instances = tune_sampler.batch_sample(batch_size=64)
+                batch_size = 64
+                while True:
+                    indices, instances = tune_sampler.batch_sample(batch_size=batch_size)
 
                     num_list = []
                     for _ in instances:
@@ -122,7 +129,9 @@ class Sampler:
                         sample_time=sample_time
                     )
                     
-                    tune_sampler.update_score(indices, score_list)
+                    if tune_sampler.update_score(indices, score_list) is False:
+                        print('sampler suggest should end sample, break')
+                        break
             # except Exception as err:
             #     print('sample error', err)
             #     time.sleep(1)
@@ -135,3 +144,13 @@ class Sampler:
 
     def _global_sample_nums_plus_one(self):
         self.__class__._global_samples_nums += 1
+
+
+    def _get_global_spaces_nums(self) -> int:
+        return self.__class__._global_spaces_nums
+
+    def set_global_spaces_nums(self, num):
+        self.__class__._global_spaces_nums = num
+
+    def _global_spaces_nums_plus_one(self):
+        self.__class__._global_spaces_nums += 1

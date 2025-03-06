@@ -76,7 +76,7 @@ def main(
     else:
         profiler = profile.Profiler(log_dir)
 
-    evalor = evaluator.Evaluator(
+    evaluator_ins = evaluator.Evaluator(
         database,
         template,
         function_to_evolve,
@@ -88,14 +88,12 @@ def main(
 
     # We send the initial implementation to be analysed by one of the evaluators.
     initial = template.get_function(function_to_evolve).body
-    evalor.analyse([sample_iterator.SampleIterator(initial)], [[]], profiler=profiler)
+    evaluator_ins.analyse([sample_iterator.SampleIterator(initial)], [[]], profiler=profiler)
 
     # Set global max sample nums.
-    samplers = [sampler.Sampler(database, evalor, config.samples_per_prompt, max_sample_nums=max_sample_nums, llm_class=class_config.llm_class)
-                for _ in range(config.num_samplers)]
+    sampler_ins = sampler.Sampler(database, evaluator_ins, config.samples_per_prompt, max_sample_nums=max_sample_nums, llm_class=class_config.llm_class)
 
     # This loop can be executed in parallel on remote sampler machines. As each
     # sampler enters an infinite loop, without parallelization only the first
     # sampler will do any work.
-    for s in samplers:
-        s.sample(profiler=profiler)
+    sampler_ins.sample(profiler=profiler)
