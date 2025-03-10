@@ -200,7 +200,7 @@ base_price_score: 价格评分的基准值
 '''
 class EvaluateLLM:
 
-    def __init__(self, llm_list: list[LLM], basescore: float = -500.0, base_price_score: float = 1.0):
+    def __init__(self, llm_list: list[LLM] = llm_list, basescore: float = -500.0, base_price_score: float = 1.0):
         self._llm_list = llm_list
         self._Max_score = float("-inf")
         self._basescore = basescore
@@ -283,4 +283,10 @@ class EvaluateLLM:
         index = np.random.choice(len(self._llm_list), p=probabilities)
         return self._llm_list[index]
 
-
+def get_qwen_32b() -> LLM:
+    llm_name = "DeepSeek-R1-distill-qwen-32b"
+    for llm in llm_list:
+        if llm.llm_name == llm_name:
+            return llm
+    raise ValueError(f"LLM {llm_name} not found")
+    
