@@ -115,20 +115,25 @@ class Sampler:
         self._llm_cnt = 10
 
 
-    def launch_llm(self):
-        while True:
-            with self._mux_sem:
-                # stop the search process if hit global max sample nums
-                if self._max_sample_nums and self.__class__._global_spaces_nums >= self._max_sample_nums:
-                    self._queue.put('end')
-                    break
-                # try:
-                prompt = self._database.get_prompt()
-            reset_time = time.time()
-            samples = self._llm.draw_samples(prompt.code)
-            sample_time = (time.time() - reset_time) / self._samples_per_prompt
-            self._queue.put((samples, sample_time))
-            time.sleep(0.1)
+    def launch_llm(self, thread_i):
+        try:
+            while True:
+                print('current thread_i', thread_i)
+                with self._mux_sem:
+                    # stop the search process if hit global max sample nums
+                    if self._max_sample_nums and self.__class__._global_spaces_nums >= self._max_sample_nums:
+                        self._queue.put('end')
+                        break
+                    # try:
+                    prompt = self._database.get_prompt()
+                reset_time = time.time()
+                samples = self._llm.draw_samples(prompt.code)
+                sample_time = (time.time() - reset_time) / self._samples_per_prompt
+                self._queue.put((samples, sample_time))
+                time.sleep(0.1)
+        except Exception as err:
+            print('current thread_i', thread_i)
+            print('errrrrrr', 'launch_llm', err)
 
     def update_database(self, samples, sample_time, kwargs):
         # samples_new = []
@@ -180,26 +185,17 @@ class Sampler:
     def sample(self, **kwargs):
         """Continuously gets prompts, samples programs, sends them for analysis.
         """
-        for _ in range(self._llm_cnt):
-            launch_thread = threading.Thread(target=self.launch_llm, daemon=True)
+        for thread_i in range(self._llm_cnt):
+            launch_thread = threading.Thread(target=self.launch_llm, args=(thread_i,), daemon=True)
             launch_thread.start()
 
         while True:
             llm_return_obj = self._queue.get()
-            with self._mux_sem:
-                while True:
-                    try:
-                        if llm_return_obj is None:
-                            llm_return_obj = self._queue.get_nowait()
-                        if llm_return_obj == 'end':
-                            break
-                        samples, sample_time = llm_return_obj
-                        self.update_database(samples, sample_time, kwargs)
-                        llm_return_obj = None
-                    except queue.Empty:
-                        break
             if llm_return_obj == 'end':
                 break
+            with self._mux_sem:
+                samples, sample_time = llm_return_obj
+                self.update_database(samples, sample_time, kwargs)
                 
 
     def _get_global_sample_nums(self) -> int:
