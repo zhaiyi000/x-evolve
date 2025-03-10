@@ -73,10 +73,10 @@ def _trim_preface_of_body(sample: str) -> str:
 def request(prompt):
     for retry_i in range(5):
         try:
+            print('request...')
             print('-----------------------')
             print(prompt)
             print('-----------------------')
-            print('request...')
             # json_data = {
             #     "model": "llama3.3",
             #     "prompt": prompt,
@@ -125,8 +125,9 @@ def request(prompt):
             provider = 'DeepInfra'
 
             response = requests.post('https://ark.cn-beijing.volces.com/api/v3/chat/completions', headers=headers, json={
-                'model': 'ep-20250227102412-tfkv8',  # v3
+                # 'model': 'ep-20250227102412-tfkv8',  # v3
                 # 'model': 'ep-20250303202036-j6hfh',  # r1
+                'model': 'ep-20250305162537-2sbpv',  # 32b
                 'messages': [
                     {
                         "role": "system",
@@ -213,16 +214,14 @@ class LLMAPI(sampler.LLM):
 """
 Create an improved Python function for online bin-packing that demonstrates:
 Novel priority strategy: Propose a smarter item-bin matching approach considering both spatial fit and future packing potential
-Parameter tuning points: Clearly mark tuning parameters using tunable([...]) wrapper. Example:
+Parameter tuning points: Clearly mark tuning parameters using tunable([option1, option2, ...]) wrapper. Example:
 `if remaining_capacity > tunable([0.2, 0.5]):`
 `sorted(items, key=lambda x: tunable([x.size, x.weight]))`
-Focus first on strategic innovation, then expose tuning parameters through tunable() calls. Keep implementation practical but non-trivial.
+Focus first on strategic innovation, then expose tuning parameters through tunable([option1, option2, ...]) calls. Keep implementation practical but non-trivial.
 """
         self._additional_prompt = additional_prompt
         self._trim = trim
 
-        self.executor = ProcessPoolExecutor(max_workers=samples_per_prompt)
-        
 
     def draw_samples(self, prompt: str) -> Collection[str]:
         """Returns multiple predicted continuations of `prompt`."""
@@ -230,10 +229,10 @@ Focus first on strategic innovation, then expose tuning parameters through tunab
 
     def _draw_sample(self, content_list: list) -> str:
         prompt_list = ['\n'.join([content, self._additional_prompt]) for content in content_list]
-        futures = [self.executor.submit(request, prompt) for prompt in prompt_list]
+        futures = [request(prompt) for prompt in prompt_list]
         response_list = []
         for future in futures:
-            response = future.result()
+            response = future
             if self._trim:
                 response = _trim_preface_of_body(response)
             response_list.append(response)
