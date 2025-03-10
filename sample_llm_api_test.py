@@ -1,24 +1,17 @@
-# from sample_llm_api import LLM
 from sample_llm_api import EvaluateLLM
-from sample_llm_api import llm_list
+from sample_llm_api import get_qwen_32b
+import numpy as np
 
 
 
 
-llm = EvaluateLLM(llm_list, 0.0, 5.0)
-'''
-llm.call_llm(llm_list[0], 10.0)
-p = llm.calculate_probability()
-print(p)
-'''
-'''
-llm_index = np.random.choice(len(llm_list))
-llm = llm_list[llm_index]
-while:
-    score = funsearch(llm)
-    llm = llm.call_llm(llm, score)
-'''
-first = llm.calculate_probability()
-print(first.llm_name)
-next = llm.call_llm(first, 10.0)
-print(next.llm_name)
+llm = EvaluateLLM()
+llm_iterator = llm.calculate_probability()
+print(llm_iterator.llm_name)
+for i in range(0, 10):
+    score = np.random.randint(-500, -210) # score = funsearch(llm_iterator)
+    llm_iterator = llm.call_llm(llm_iterator, score)
+    print(llm_iterator.llm_name)
+
+qwen = get_qwen_32b()
+print(qwen.llm_name)
