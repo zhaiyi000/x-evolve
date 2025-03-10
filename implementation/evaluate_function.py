@@ -10,15 +10,7 @@ from implementation import sample_iterator
     baseline: 得分最高序列的序列长度,可选项,若不使用,baseline请填-1
     c_1: (1 - math.exp(c_1 * (t_init - 1)))的超参数c_1,为100区分度较明显
 '''
-evaluate_function_file = 'evaluate_function.pkl'
-evaluate_function_list = []
-import pickle
 def calculate_score(score_list: list, visit_list: list, length_list: list):
-    evaluate_function_list.append((score_list, visit_list, length_list))
-
-    with open(evaluate_function_file, 'wb') as f:
-        pickle.dump(evaluate_function_list, f)
-
     # 转换初始评分
     s_min = min(score_list)
     s_max = max(score_list)
