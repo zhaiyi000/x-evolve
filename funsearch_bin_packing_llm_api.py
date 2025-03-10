@@ -432,7 +432,7 @@ if __name__ == '__main__':
     bin_packing_or3 = {'OR3': bin_packing_utils.datasets['OR3']}
     global_max_sample_num = 300  # if it is set to None, funsearch will execute an endless loop
     import shutil, os
-    log_dir = f'logs'
+    log_dir = os.environ.get('LOG_NAME', 'logs')
     if os.path.exists(log_dir):
         # input('delete logs folder?')
         shutil.rmtree(log_dir)
@@ -443,5 +443,5 @@ if __name__ == '__main__':
         config=config,
         max_sample_nums=global_max_sample_num,
         class_config=class_config,
-        log_dir='logs/funsearch_llm_api',
+        log_dir=f'{log_dir}/funsearch_llm_api',
     )
