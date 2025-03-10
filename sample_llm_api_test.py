@@ -12,8 +12,11 @@ p = llm.calculate_probability()
 print(p)
 '''
 '''
-first_index = np.random.choice(len(llm_list))
-
+llm_index = np.random.choice(len(llm_list))
+llm = llm_list[llm_index]
+while:
+    score = funsearch(llm)
+    llm = llm.call_llm(llm, score)
 '''
 first = llm.calculate_probability()
 print(first.llm_name)
