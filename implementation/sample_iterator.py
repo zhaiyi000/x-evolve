@@ -148,14 +148,14 @@ class SampleIterator:
 
         print(f'this best socre: {best_score}; best score: {self.best_score}; global score: {self.__class__.max_score_global}; space size: {self.space_size}; measure cnt: {len(self.visited)}')
         factor = 4 if self.best_score == self.__class__.max_score_global else 1
-        if self.space_size == len(self.visited) or self.no_update_cnt == 5 * factor:
+        if self.space_size == len(self.visited) or self.no_update_cnt == 3 * 1:
             return False
         else:
             return True
 
     
     def get_final_code(self):
-        top_cnt = 64
+        top_cnt = 1
         reocrds = list(self.visited.items())
         np.random.shuffle(reocrds)
         reocrds.sort(key=lambda x: x[1], reverse=True)

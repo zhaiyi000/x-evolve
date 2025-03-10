@@ -185,12 +185,14 @@ class ProgramsDatabase:
         if isinstance(scores_per_test, np.float64):
             score = scores_per_test
         elif isinstance(scores_per_test, ScoresPerTest):
+            raise Exception('todo')
             score = reduce_score(scores_per_test)
         else:
             raise Exception('unkonw data type')
 
         key_str = str(program)
         if key_str in self._nodes:
+            raise Exception('todo')
             node = self._nodes[key_str]
             node.score = max(node.score, score)
         else:

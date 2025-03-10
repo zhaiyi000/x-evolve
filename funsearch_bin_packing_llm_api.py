@@ -73,6 +73,9 @@ def _trim_preface_of_body(sample: str) -> str:
 def request(prompt):
     for retry_i in range(5):
         try:
+            print('-----------------------')
+            print(prompt)
+            print('-----------------------')
             print('request...')
             # json_data = {
             #     "model": "llama3.3",
@@ -197,14 +200,23 @@ class LLMAPI(sampler.LLM):
         # additional_prompt = ('Complete a different and more complex Python function. '
         #                      'Be creative and you can insert multiple if-else and for-loop in the code logic. '
         #                      'Only output the Python code, no descriptions.')
+#         additional_prompt = \
+# """
+# Complete a different and more complex Python function. Be creative and you can insert multiple if-else and for-loop in the code logic. Evolve a better priority function in two ways:
+#   1. Propose a better strategy for deciding the priority in an online bin-packing problem.
+#   2. Identify places in the code that might offer tuning options. Wherever you see potential tuning parameters, wrap them in a tunable([...]) function call. Do not need the tunable function implementation. For example:
+#     - `if remaining_capacity > tunable([0.2, 0.5]):`
+#     - `sorted(items, key=lambda x: tunable([x.size, x.weight]))`
+# Prioritize strategy evolution first, then parameter tuning.
+# """
         additional_prompt = \
 """
-Complete a different and more complex Python function. Be creative and you can insert multiple if-else and for-loop in the code logic. Only output the Python code, no descriptions. Evolve a better priority function in two ways:
-  1. Propose a better strategy for deciding the priority in an online bin-packing problem.
-  2. Identify places in the code that might offer tuning options. Wherever you see potential tuning parameters, wrap them in a tunable([...]) function call. Do not need the tunable function implementation. For example:
-    - `if remaining_capacity > tunable([0.2, 0.5]):`
-    - `sorted(items, key=lambda x: tunable([x.size, x.weight]))`
-Prioritize strategy evolution first, then parameter tuning.
+Create an improved Python function for online bin-packing that demonstrates:
+Novel priority strategy: Propose a smarter item-bin matching approach considering both spatial fit and future packing potential
+Parameter tuning points: Clearly mark tuning parameters using tunable([...]) wrapper. Example:
+`if remaining_capacity > tunable([0.2, 0.5]):`
+`sorted(items, key=lambda x: tunable([x.size, x.weight]))`
+Focus first on strategic innovation, then expose tuning parameters through tunable() calls. Keep implementation practical but non-trivial.
 """
         self._additional_prompt = additional_prompt
         self._trim = trim
