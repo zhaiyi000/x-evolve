@@ -84,13 +84,10 @@ class SampleIterator:
 
     def calculate_probability(self):
         probability = []
-        base_temp = self._temperature
-        decay = len(self.visited) / self.space_size
-        dynamic_temp = base_temp * (1 - decay) + 0.1 * decay
         for scores in self.score_list:
             max_score = max(scores)
             scores = [x if x != MIN_SCORE else max_score for x in scores]
-            prob = softmax(scores, dynamic_temp)
+            prob = softmax(scores, self._temperature)
             probability.append(prob)
         return probability
     
