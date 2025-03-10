@@ -21,6 +21,7 @@ class LLM:
     provider: str
     input_price: float
     output_price: float
+    price_score: float = 0
     response_score: list = dataclasses.field(default_factory=list)
     score: float = 0
 
@@ -32,6 +33,7 @@ llm_list = [
         provider=None,
         input_price=4.0,
         output_price=16.0,
+        price_score=0.0,
         response_score=[],
         score=0.0,
     ),
@@ -42,6 +44,7 @@ llm_list = [
         provider=None, 
         input_price=2.0,
         output_price=8.0, 
+        price_score=0.0,
         response_score=[], 
         score=0.0
     ),
@@ -52,6 +55,7 @@ llm_list = [
         provider=None,
         input_price=0.6,
         output_price=2.4,
+        price_score=0.0,
         response_score=[],
         score=0.0,
     ),
@@ -62,6 +66,7 @@ llm_list = [
         provider=None,
         input_price=1.5,
         output_price=6.0,
+        price_score=0.0,
         response_score=[],
         score=0.0,
     ),
@@ -72,6 +77,7 @@ llm_list = [
         provider="OpenAI",
         input_price=2.5 * rate,
         output_price=10 * rate,
+        price_score=0.0,
         response_score=[],
         score=0.0,
     ),
@@ -82,6 +88,7 @@ llm_list = [
         provider="OpenAI",
         input_price=0.15 * rate,
         output_price=0.6 * rate,
+        price_score=0.0,
         response_score=[],
         score=0.0,
     ),
@@ -92,6 +99,7 @@ llm_list = [
 #        provider="OpenAI",
 #        input_price=15 * rate,
 #        output_price=60 * rate,
+#        price_score=0.0,
 #        response_score=[],
 #        score=0.0,
 #    ),
@@ -102,6 +110,7 @@ llm_list = [
         provider="OpenAI",
         input_price=1.1 * rate,
         output_price=4.4 * rate,
+        price_score=0.0,
         response_score=[],
         score=0.0,
     ),
@@ -112,6 +121,7 @@ llm_list = [
         provider="OpenAI",
         input_price=1.1 * rate,
         output_price=4.4 * rate,
+        price_score=0.0,
         response_score=[],
         score=0.0,
     ),
@@ -122,6 +132,7 @@ llm_list = [
         provider="OpenAI",
         input_price=1.1 * rate,
         output_price=4.4 * rate,
+        price_score=0.0,
         response_score=[],
         score=0.0,
     ),
@@ -132,6 +143,7 @@ llm_list = [
         provider="Anthropic",
         input_price=3 * rate,
         output_price=15 * rate,
+        price_score=0.0,
         response_score=[],
         score=0.0,
     ),
@@ -142,6 +154,7 @@ llm_list = [
         provider="Google AI Studio",
         input_price=0.1 * rate,
         output_price=0.4 * rate,
+        price_score=0.0,
         response_score=[],
         score=0.0,
     ),
@@ -152,6 +165,7 @@ llm_list = [
         provider="Google AI Studio",
         input_price=0.0 * rate,
         output_price=0.0 * rate,
+        price_score=0.0,
         response_score=[],
         score=0.0,
     ),
@@ -162,6 +176,7 @@ llm_list = [
         provider="Google AI Studio",
         input_price=0.0 * rate,
         output_price=0.0 * rate,
+        price_score=0.0,
         response_score=[],
         score=0.0,
     ),
@@ -172,6 +187,7 @@ llm_list = [
         provider="xAI",
         input_price=5 * rate,
         output_price=15 * rate,
+        price_score=0.0,
         response_score=[],
         score=0.0,
     ),
@@ -184,7 +200,7 @@ base_price_score: 价格评分的基准值
 '''
 class EvaluateLLM:
 
-    def __init__(self, llm_list: list[LLM], basescore: float, base_price_score: float):
+    def __init__(self, llm_list: list[LLM], basescore: float = -500.0, base_price_score: float = 1.0):
         self._llm_list = llm_list
         self._Max_score = float("-inf")
         self._basescore = basescore
@@ -195,6 +211,7 @@ class EvaluateLLM:
             # 计算价格权重占比
             cost_ratio = (self._llm_list[index].input_price + self._llm_list[index].output_price) / self._total_cost
             self._llm_list[index].score = self._base_price_score * (1 - cost_ratio)
+            self._llm_list[index].price_score = self._llm_list[index].score
         self._llm_max_score = max([llm.score for llm in self._llm_list])
 
     # 将大模型注册到评分器中
@@ -206,6 +223,7 @@ class EvaluateLLM:
         # 计算价格权重占比
         cost_ratio = (llm.input_price + llm.output_price) / self._total_cost
         self._llm_list[index].score = self._base_price_score * (1 - cost_ratio)
+        self._llm_list[index].price_score = self._llm_list[index].score
         self._llm_max_score = max(self._llm_max_score, self._llm_list[index].score)
     
     # 每次调用大模型后,将得分记录到大模型的Response_score中
@@ -239,7 +257,7 @@ class EvaluateLLM:
             # 模型调用次数越多,当前次数的权重越大
             delta = (score1 + score2 + score3) * (1 - decay_factor ** len(llm.response_score))
         # 更新模型的评分(平滑过渡)
-        self._llm_list[index].score = decay_factor * self._llm_list[index].score + (1 - decay_factor) * delta
+        self._llm_list[index].score = decay_factor * self._llm_list[index].score + (1 - decay_factor) * delta * self._llm_list[index].price_score
         self._llm_max_score = max(self._llm_max_score, self._llm_list[index].score)
         for iterator in range(len(self._llm_list)):
             if(len(self._llm_list[iterator].response_score) == 0):
