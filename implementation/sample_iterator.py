@@ -134,10 +134,10 @@ class SampleIterator:
         best_score = MIN_SCORE
         for indices, score in zip(instance_indices, score_list):
             if score:
+                best_score = max(best_score, score)
                 assert indices in self.visited
                 self.visited[indices] = score
                 for space_i, idx in enumerate(indices):
-                    best_score = max(best_score, score)
                     self.score_list[space_i][idx] = max(self.score_list[space_i][idx], score)
         if best_score > self.best_score:
             self.__class__.max_score_global = max(self.__class__.max_score_global, best_score)

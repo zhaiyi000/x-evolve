@@ -129,13 +129,15 @@ class ProgramsDatabase:
         best_nodes.sort(key=lambda x: x.score)
 
         sorted_implementations = []
+        parent_score = []
         for node in best_nodes:
             node.visit_count += 1
             sorted_implementations.append(node.program)
+            parent_score.append(node.score)
 
         version_generated = len(sorted_implementations) + 1
         code = self._generate_prompt(sorted_implementations)
-        return Prompt(code, version_generated)
+        return Prompt(code, version_generated), parent_score
 
     def _generate_prompt(
             self,

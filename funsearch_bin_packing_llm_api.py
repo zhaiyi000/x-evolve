@@ -8,6 +8,7 @@ from implementation import sampler
 from implementation import evaluator_accelerate
 from implementation import evaluator
 from implementation import code_manipulation
+from implementation import sample_llm_api
 import bin_packing_utils
 
 import json
@@ -70,64 +71,21 @@ def _trim_preface_of_body(sample: str) -> str:
     return sample
 
 
-def request(prompt):
+def request(llm_ins: sample_llm_api.LLM, prompt: str):
     for retry_i in range(5):
         try:
-            print('request...')
+            print(llm_ins.model or llm_ins.llm_name, 'request...')
+            llm_ins = sample_llm_api.get_qwen_32b()
             print('-----------------------')
             print(prompt)
             print('-----------------------')
-            # json_data = {
-            #     "model": "llama3.3",
-            #     "prompt": prompt,
-            #     # "n_predict": 512
-            #     "stream": False
-            # }
-            # # response = requests.post('http://114.214.164.112:8080/completion', json=json_data)
-            # # response = json.loads(response.text)['content']
-            # response = requests.post('http://localhost:11434/api/generate', json=json_data)
-            # response = json.loads(response.text)['response']
-            # return response   
-
-
-
-
-            # url = "https://api.siliconflow.cn/v1/chat/completions"
-            # payload = {
-            #     "model": "Pro/deepseek-ai/DeepSeek-V3",
-            #     "messages": [
-            #         {
-            #             "role": "system",
-            #             "content": "You are a helpful assistant."
-            #         },
-            #         {
-            #             "content": prompt,
-            #             "role": "user"
-            #         }
-            #     ]
-            # }
-            # headers = {
-            #     "Authorization": "Bearer sk-qkrxgebdsvhdrbeuarbsykhdxllsbshxlwlzqujujsqajnje",
-            #     "Content-Type": "application/json"
-            # }
-
-            # response = requests.request("POST", url, json=payload, headers=headers)
-            # if response.status_code != 200:
-            #     print('response.status_code', response.status_code, response.text)
-            # data = json.loads(response.text)
-
-            # return data['choices'][0]['message']['content']
-
 
             headers = {
-                'Authorization': 'Bearer f184bcd9-68b0-49be-8a3f-ea095ee71e14',
+                'Authorization': llm_ins.api_key,
             }
-            provider = 'DeepInfra'
 
-            response = requests.post('https://ark.cn-beijing.volces.com/api/v3/chat/completions', headers=headers, json={
-                # 'model': 'ep-20250227102412-tfkv8',  # v3
-                # 'model': 'ep-20250303202036-j6hfh',  # r1
-                'model': 'ep-20250305162537-2sbpv',  # 32b
+            json_data = {
+                'model': llm_ins.model or llm_ins.llm_name,
                 'messages': [
                     {
                         "role": "system",
@@ -138,28 +96,26 @@ def request(prompt):
                         "role": "user"
                     }
                 ],
-                # 'provider': {
-                #     'order': [
-                #         provider,
-                #     ],
-                #     'allow_fallbacks': False
-                # },
-            })
+            }
+            if llm_ins.provider:
+                json_data['provider'] = {
+                    'order': [
+                        llm_ins.provider,
+                    ],
+                    'allow_fallbacks': False
+                }
+
+            response = requests.post('https://ark.cn-beijing.volces.com/api/v3/chat/completions', headers=headers, json=json_data)
 
             if response.status_code != 200:
                 print('response.status_code', response.status_code, response.text)
                 raise Exception('request net error')
 
-            
-
             data = json.loads(response.text)
 
-            # with open('data.json', 'r') as f:
-            #     data = json.load(f)
-
-            # if data['provider'] != provider:
-            #     print(f'specific provider: {provider}, actual provicer: {data["provider"]}')
-            #     raise Exception('not the specific privoder')
+            if llm_ins.provider and data['provider'] != llm_ins.provider:
+                print(f'specific provider: {llm_ins.provider}, actual provicer: {data["provider"]}')
+                raise Exception('not the specific privoder')
             
             return data['choices'][0]['message']['content']
         except Exception as e:
@@ -167,29 +123,6 @@ def request(prompt):
             print(e)
             time.sleep(1)
     return prompt
-
-
-# def request_batch(prompt_batch):
-#     for retry_i in range(5):
-#         try:
-#             print('request...')
-#             json_data = {
-#                 # "model": "llama3.3",
-#                 "prompt": prompt_batch,
-#                 "n_predict": 512
-#                 # "stream": False
-#             }
-            
-#             response = requests.post('http://114.214.164.112:8080/completion', json=json_data)
-#             response_list = json.loads(response.text)
-            
-#             batch_result = [prompt+response['content'] for prompt, response in zip(prompt_batch, response_list)]
-#             return batch_result   
-#         except Exception as e:
-#             print(f'errr111__{retry_i}')
-#             print(e)
-#             time.sleep(5)
-#     return prompt_batch
 
 
 class LLMAPI(sampler.LLM):
@@ -223,13 +156,13 @@ Focus first on strategic innovation, then expose tuning parameters through tunab
         self._trim = trim
 
 
-    def draw_samples(self, prompt: str) -> Collection[str]:
+    def draw_samples(self, llm_ins: sample_llm_api.LLM, prompt: str) -> Collection[str]:
         """Returns multiple predicted continuations of `prompt`."""
-        return self._draw_sample([prompt] * self._samples_per_prompt)
+        return self._draw_sample(llm_ins, [prompt] * self._samples_per_prompt)
 
-    def _draw_sample(self, content_list: list) -> str:
+    def _draw_sample(self, llm_ins: sample_llm_api.LLM, content_list: list) -> str:
         prompt_list = ['\n'.join([content, self._additional_prompt]) for content in content_list]
-        futures = [request(prompt) for prompt in prompt_list]
+        futures = [request(llm_ins, prompt) for prompt in prompt_list]
         response_list = []
         for future in futures:
             response = future
@@ -237,13 +170,6 @@ Focus first on strategic innovation, then expose tuning parameters through tunab
                 response = _trim_preface_of_body(response)
             response_list.append(response)
         return response_list
-        # response_list = request_batch(prompt_list)
-        # response_list_final = []
-        # for response in response_list:
-        #     if self._trim:
-        #         response = _trim_preface_of_body(response)
-        #         response_list_final.append(response)
-        # return response_list_final
 
 
 def _compile_and_run_function(program, function_to_run, function_to_evolve, dataset, numba_accelerate):
@@ -317,39 +243,6 @@ class Sandbox(evaluator.Sandbox):
 
         # print(f'evaluate tasks done')
         return result_list
-        
-        # result_queue = multiprocessing.Queue()
-        # process = multiprocessing.Process(
-        #     target=self._compile_and_run_function,
-        #     args=(program, function_to_run, function_to_evolve, dataset, self._numba_accelerate, result_queue)
-        # )
-        # process.start()
-        # process.join(timeout=timeout_seconds)
-        # if process.is_alive():
-        #     # if the process is not finished in time, we consider the program illegal
-        #     process.terminate()
-        #     process.join()
-        #     results = None, False
-        # else:
-        #     if not result_queue.empty():
-        #         results = result_queue.get_nowait()
-        #     else:
-        #         results = None, False
-
-        # if self._verbose:
-        #     print(f'================= Evaluated Program =================')
-        #     program_: code_manipulation.Program = code_manipulation.text_to_program(text=program)
-        #     func_to_evolve_: str = kwargs.get('func_to_evolve', 'priority')
-        #     function_: code_manipulation.Function = program_.get_function(func_to_evolve_)
-        #     function_: str = str(function_).strip('\n')
-        #     print(f'{function_}')
-        #     print(f'-----------------------------------------------------')
-        #     print(f'Score: {str(results)}')
-        #     print(f'=====================================================')
-        #     print(f'\n\n')
-
-        # return results
-
 
 
 specification = r'''
@@ -430,7 +323,7 @@ if __name__ == '__main__':
     config = config.Config(samples_per_prompt=1, evaluate_timeout_seconds=30)
 
     bin_packing_or3 = {'OR3': bin_packing_utils.datasets['OR3']}
-    global_max_sample_num = 300  # if it is set to None, funsearch will execute an endless loop
+    global_max_sample_num = 100  # if it is set to None, funsearch will execute an endless loop
     import shutil, os
     log_dir = os.environ.get('LOG_DIR', 'logs')
     if os.path.exists(log_dir):

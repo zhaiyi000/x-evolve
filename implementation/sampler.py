@@ -28,6 +28,7 @@ from implementation import code_manipulation
 import copy
 import threading
 import queue
+from implementation import sample_llm_api
 
 
 def sample_to_program(
@@ -82,7 +83,7 @@ class LLM(ABC):
         raise NotImplementedError('Must provide a language model.')
 
     @abstractmethod
-    def draw_samples(self, prompt: str) -> Collection[str]:
+    def draw_samples(self, llm_ins, prompt: str) -> Collection[str]:
         """Returns multiple predicted continuations of `prompt`."""
         return [self._draw_sample(prompt) for _ in range(self._samples_per_prompt)]
 
@@ -112,10 +113,10 @@ class Sampler:
         self._function_to_evolve = function_to_evolve
         self._mux_sem = threading.Semaphore(1)
         self._queue = queue.Queue()
-        self._llm_cnt = 10
+        self._llm_cnt = 1
 
 
-    def launch_llm(self, thread_i):
+    def launch_llm(self, thread_i, llm):
         try:
             while True:
                 print('current thread_i', thread_i)
@@ -125,17 +126,18 @@ class Sampler:
                         self._queue.put('end')
                         break
                     # try:
-                    prompt = self._database.get_prompt()
+                    prompt, parent_score = self._database.get_prompt()
+                    llm_ins = llm.calculate_probability()
                 reset_time = time.time()
-                samples = self._llm.draw_samples(prompt.code)
+                samples = self._llm.draw_samples(llm_ins, prompt.code)
                 sample_time = (time.time() - reset_time) / self._samples_per_prompt
-                self._queue.put((samples, sample_time))
+                self._queue.put((samples, sample_time, llm_ins, parent_score))
                 time.sleep(0.1)
         except Exception as err:
             print('current thread_i', thread_i)
             print('errrrrrr', 'launch_llm', err)
 
-    def update_database(self, samples, sample_time, kwargs):
+    def update_database(self, samples, sample_time, llm_ins, parent_score, llm, kwargs):
         # samples_new = []
         for sample in samples:
             print('-------------------')
@@ -180,13 +182,15 @@ class Sampler:
                     new_function,
                     max_score,
                 )
+            llm.call_llm(llm_ins, parent_score, max_score)
 
 
     def sample(self, **kwargs):
         """Continuously gets prompts, samples programs, sends them for analysis.
         """
+        llm = sample_llm_api.EvaluateLLM()
         for thread_i in range(self._llm_cnt):
-            launch_thread = threading.Thread(target=self.launch_llm, args=(thread_i,), daemon=True)
+            launch_thread = threading.Thread(target=self.launch_llm, args=(thread_i, llm), daemon=True)
             launch_thread.start()
 
         while True:
@@ -194,8 +198,8 @@ class Sampler:
             if llm_return_obj == 'end':
                 break
             with self._mux_sem:
-                samples, sample_time = llm_return_obj
-                self.update_database(samples, sample_time, kwargs)
+                samples, sample_time, llm_ins, parent_score = llm_return_obj
+                self.update_database(samples, sample_time, llm_ins, parent_score, llm, kwargs)
                 
 
     def _get_global_sample_nums(self) -> int:
