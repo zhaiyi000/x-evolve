@@ -152,9 +152,9 @@ basescore: response的基准评分
 self._max_score: response的最高得分,初始为负无穷
 base_price_score: 价格评分的基准值
 '''
-# llm_sample_file = 'llm_sample.pkl'
-# llm_sample_list = []
-# import pickle
+llm_sample_list = []
+import pickle
+import os
 class EvaluateLLM:
 
     def __init__(self):
@@ -178,7 +178,7 @@ class EvaluateLLM:
 
     # 计算下次选择大模型时使用的评分概率
     def calculate_probability(self) -> LLM:
-        window_size = 1
+        window_size = 5
         c_1 = 100
         temperature = 1
 
@@ -220,9 +220,11 @@ class EvaluateLLM:
             probabilities = sample_iterator.softmax(benefit_list, temperature)
             index = np.random.choice(len(self._llm_list), p=probabilities)
         
-        # llm_sample_list.append((self._response_score, index))
-        # with open(llm_sample_file, 'wb') as f:
-        #     pickle.dump(llm_sample_list, f)
+        llm_sample_list.append((self._response_score, index))
+        log_dir = os.environ.get('LOG_DIR', 'logs')
+        llm_sample_file = f'{log_dir}/llm_sample.pkl'
+        with open(llm_sample_file, 'wb') as f:
+            pickle.dump(llm_sample_list, f)
         return self._llm_list[index]
 
 
