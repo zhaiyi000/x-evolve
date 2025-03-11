@@ -166,8 +166,8 @@ class Sampler:
                     global_sample_nums_list=num_list,
                     sample_time=sample_time
                 )
-                score_list = [max_score, *[x for x in score_list if x]]
-                max_score = max(score_list)
+                # score_list = [max_score, *[x for x in score_list if x]]
+                max_score = max([max_score, *[x for x in score_list if x]])
                 
                 if tune_sampler.update_score(indices, score_list) is False:
                     print('sampler suggest should end sample, break')
