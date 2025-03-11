@@ -164,7 +164,7 @@ class EvaluateLLM:
             if llm.output_price == 0:
                 llm.output_price = min_output_price
         self._llm_list = llm_list
-        self._response_score = [[]] * len(llm_list)
+        self._response_score = [[] for _ in llm_list]
     
 
     # 每次调用大模型后,将得分记录到大模型的Response_score中
@@ -207,8 +207,9 @@ class EvaluateLLM:
                 else:
                     benefit = 0
                     for par_score, child_score in response_score[-window_size:]:
+                        intensity = cal_intensity(child_score)
                         for par_s in par_score:
-                            benefit += cal_intensity(child_score) * (child_score - par_s)
+                            benefit += intensity * (child_score - par_s)
                     benefit_list.append(benefit / (llm.input_price + llm.output_price))
 
             max_benefit = max([x for x in benefit_list if x])
