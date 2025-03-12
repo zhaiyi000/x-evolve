@@ -143,6 +143,20 @@ class LLMAPI(sampler.LLM):
 #     - `sorted(items, key=lambda x: tunable([x.size, x.weight]))`
 # Prioritize strategy evolution first, then parameter tuning.
 # """
+#         additional_prompt = \
+# """
+# Create an improved Python function for online bin-packing that demonstrates:
+# Novel priority strategy: Propose a smarter item-bin matching approach considering both spatial fit and future packing potential
+# Parameter tuning points: Clearly mark tuning parameters using tunable([option1, option2, ...]) wrapper. Example:
+# `if remaining_capacity > tunable([0.2, 0.5]):`
+# `sorted(items, key=lambda x: tunable([x.size, x.weight]))`
+# First focus on strategic innovation, then expose tuning parameters through tunable([option1, option2, ...]) calls. 
+# You should keep implementation practical but non-trivial.
+# Things you should also focus on:
+# 1.You can try a lot of functions and check the answers, however, the final function you provide for me should be the best one.
+# 2.You can merge the strategies of multiple algorithms, and try to improve the performance of the functions you generate by combining the advantages of multiple algorithms.
+# 3.You can break the traditional thinking and try new ideas.That is to say, you can try any possible methods as long as they are correct and reasonable.
+# """
         additional_prompt = \
 """
 Create an improved Python function for online bin-packing that demonstrates:
@@ -150,12 +164,7 @@ Novel priority strategy: Propose a smarter item-bin matching approach considerin
 Parameter tuning points: Clearly mark tuning parameters using tunable([option1, option2, ...]) wrapper. Example:
 `if remaining_capacity > tunable([0.2, 0.5]):`
 `sorted(items, key=lambda x: tunable([x.size, x.weight]))`
-First focus on strategic innovation, then expose tuning parameters through tunable([option1, option2, ...]) calls. 
-You should keep implementation practical but non-trivial.
-Things you should also focus on:
-1.You can try a lot of functions and check the answers, however, the final function you provide for me should be the best one.
-2.You can merge the strategies of multiple algorithms, and try to improve the performance of the functions you generate by combining the advantages of multiple algorithms.
-3.You can break the traditional thinking and try new ideas.That is to say, you can try any possible methods as long as they are correct and reasonable.
+Focus first on strategic innovation, then expose tuning parameters through tunable([option1, option2, ...]) calls. Keep implementation practical but non-trivial.
 """
         self._additional_prompt = additional_prompt
         self._trim = trim

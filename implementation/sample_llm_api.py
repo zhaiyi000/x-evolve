@@ -3,7 +3,7 @@ import numpy as np
 from implementation import sample_iterator
 import math
 byte_key = "Bearer f184bcd9-68b0-49be-8a3f-ea095ee71e14"
-open_key = "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"
+open_key = "Bearer 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"
 rate = 7.2739
 '''
 llm_name: 大模型的名字
