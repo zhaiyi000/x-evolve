@@ -194,7 +194,7 @@ class ProgramsDatabase:
 
         key_str = str(program)
         if key_str in self._nodes:
-            raise Exception('todo')
+            # raise Exception('todo')
             node = self._nodes[key_str]
             node.score = max(node.score, score)
         else:
