@@ -177,6 +177,10 @@ class Evaluator:
         program_list = []
         scores_per_test_list = []
         # register_list = []
+        sample_template = tune_sampler.get_template()
+        sample_template, _ = _sample_to_program(
+                sample_template, self._template, self._function_to_evolve)
+        decisions_list = []
 
         for indices in indices_list:
             generated_code, decisions = tune_sampler.get_instance(indices)
@@ -187,6 +191,7 @@ class Evaluator:
             new_function_list.append(new_function)
             program_list.append(program)
             scores_per_test_list.append(scores_per_test)
+            decisions_list.append(decisions)
             # register_list.append(register)
 
 
@@ -218,7 +223,7 @@ class Evaluator:
         profiler: profile.Profiler = kwargs.get('profiler', None)
         global_sample_nums_list = kwargs.get('global_sample_nums_list', None)
         num_i = 0
-        for new_function, scores_per_test, indices in zip(new_function_list, scores_per_test_list, indices_list):
+        for decisions, scores_per_test, indices in zip(decisions_list, scores_per_test_list, indices_list):
             # score = self._database.register_program(
             #     register,
             #     scores_per_test,
@@ -234,9 +239,10 @@ class Evaluator:
                 if global_sample_nums_list:
                     global_sample_nums = global_sample_nums_list[num_i]
                     num_i += 1
-                new_function.global_sample_nums = global_sample_nums
-                new_function.score = score
-                new_function.sample_time = sample_time
-                new_function.evaluate_time = evaluate_time
-                profiler.register_function(new_function)
+                sample_template.global_sample_nums = global_sample_nums
+                sample_template.score = score
+                sample_template.sample_time = sample_time
+                sample_template.evaluate_time = evaluate_time
+                sample_template.decisions = decisions 
+                profiler.register_function(sample_template)
         return score_list

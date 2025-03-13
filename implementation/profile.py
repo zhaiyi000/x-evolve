@@ -83,7 +83,8 @@ class Profiler:
         content = {
             'sample_order': sample_order,
             'function': function_str,
-            'score': score
+            'score': score,
+            'decisions': programs.decisions
         }
         path = os.path.join(self._json_dir, f'samples_{sample_order}.json')
         with open(path, 'w') as json_file:
@@ -118,6 +119,7 @@ class Profiler:
             f.write(f'Sample time  : {str(sample_time)}\n')
             f.write(f'Evaluate time: {str(evaluate_time)}\n')
             f.write(f'Sample orders: {str(sample_orders)}\n')
+            f.write(f'Decisions: {str(function.decisions)}\n')
             f.write(f'======================================================\n\n\n')
 
         # update best function

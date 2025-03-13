@@ -79,11 +79,12 @@ class SampleIterator:
             start, end = match.span()
             function_code = function_code[:start] + space[idx] + function_code[end:]
             decisions.append(space[idx])
+        decisions.reverse()
         return function_code, decisions
     
 
-    # def get_template(self):
-    #     return self._code
+    def get_template(self):
+        return self._code
     
 
     def batch_sample(self, batch_size):
