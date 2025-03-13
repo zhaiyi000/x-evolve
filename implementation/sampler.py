@@ -31,21 +31,6 @@ import queue
 from implementation import sample_llm_api
 
 
-def sample_to_program(
-        generated_code: str,
-        template: code_manipulation.Program,
-        function_to_evolve: str,
-) -> tuple[code_manipulation.Function, str]:
-    """Returns the compiled generated function and the full runnable program.
-    RZ: This function removes the code after the generated function body.
-    """
-    body = evaluator._trim_function_body(generated_code)
-    program = copy.deepcopy(template)
-    evolved_function = program.get_function(function_to_evolve)
-    evolved_function.body = body
-    return evolved_function
-
-
 class LLM(ABC):
     """Language model that predicts continuation of provided source code.
 
@@ -150,16 +135,16 @@ class Sampler:
             MIN_SCORE = -1e10
             max_score = MIN_SCORE
             while True:
-                indices, instances = tune_sampler.batch_sample(batch_size=batch_size)
+                indices = tune_sampler.batch_sample(batch_size=batch_size)
 
                 num_list = []
-                for _ in instances:
+                for _ in indices:
                     self._global_sample_nums_plus_one()  # RZ: add _global_sample_nums
                     cur_global_sample_nums = self._get_global_sample_nums()
                     num_list.append(cur_global_sample_nums)
                 
                 score_list = self._evaluator.analyse(
-                    instances,
+                    tune_sampler,
                     indices,
                     # prompt.version_generated,
                     **kwargs,
@@ -175,7 +160,7 @@ class Sampler:
 
             if max_score != MIN_SCORE:
                 function_code = tune_sampler.get_final_code()
-                new_function = sample_to_program(
+                new_function = evaluator._sample_to_program(
                     function_code, self._template, self._function_to_evolve)
 
                 self._database.register_program(

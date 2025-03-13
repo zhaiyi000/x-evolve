@@ -31,9 +31,6 @@ class SampleIterator:
         self, code: str
     ):
         self._code = code
-        # self._final_code = None
-        # self._sample_name = sample_name
-        # self._store_folder_name = store_folder_name
         self._regular = "tunable\(\[(.*?)\]\)"
         self._split = ','
         self._temperature = 1
@@ -56,23 +53,6 @@ class SampleIterator:
             matches = list(re.finditer(self._regular, self._code))
         tunable.reverse()
 
-        # indices_list = itertools.product(*())
-        # all_comb = [(indices, [tunable[space_i][i] for space_i, i in enumerate(indices)]) for indices in indices_list]
-        # score_list = [[None] * len(space) for space in tunable]
-
-        # count = 0
-        # instances = []
-        # for indices, comb in all_comb:
-        #     function_code = self._code
-        #     for match, item in zip(reversed(matches), reversed(comb)):
-        #         start, end = match.span()
-        #         function_code = function_code[:start] + item + function_code[end:]
-        #     # self.save_function(function_code, count)
-        #     # count += 1
-        #     instances.append((indices, function_code))
-        #     # if 'tunable(' in function_code:
-        #     #     raise Exception('tuneable in function_code')
-        # self.instances = instances
         self.score_list = [[MIN_SCORE] * len(space) for space in tunable]
         self.visited = {}
         self.tunable = tunable
@@ -94,12 +74,12 @@ class SampleIterator:
 
     def get_instance(self, indices):
         function_code = self._code
+        decisions = []
         for match, space, idx in zip(reversed(self.matches), reversed(self.tunable), reversed(indices)):
             start, end = match.span()
             function_code = function_code[:start] + space[idx] + function_code[end:]
-        # self.save_function(function_code, count)
-        # count += 1
-        return function_code
+            decisions.append(space[idx])
+        return function_code, decisions
     
 
     # def get_template(self):
@@ -109,7 +89,6 @@ class SampleIterator:
     def batch_sample(self, batch_size):
         probability = self.calculate_probability()
         indices_list = []
-        instance_list = []
         try_cnt = 0
         while len(indices_list) < batch_size and try_cnt < batch_size:
             indices = []
@@ -120,14 +99,12 @@ class SampleIterator:
             if indices not in self.visited:
                 self.visited[indices] = MIN_SCORE
                 indices_list.append(indices)
-                # instance_list.append(self.get_instance(indices))
-                instance_list.append(self)
                 try_cnt = 0
             else:
                 try_cnt += 1
                 print('.', end='')
         print()
-        return indices_list, instance_list
+        return indices_list
     
 
     def update_score(self, instance_indices, score_list):
@@ -184,19 +161,3 @@ class SampleIterator:
             function_code = function_code[:start] + replace_str + function_code[end:]
             space_i -= 1
         return function_code
-
-    # def save_function(self, code: str, count: int):
-    #     file_name = f"generated_function_{count}.py"
-    #     file_path = os.path.join(self._store_folder_name, file_name)
-    #     with open(file_path, "w", encoding="UTF-8") as f:
-    #         f.write(code)
-
-    # def gen_function(self):
-    #     self.gen_function_code()
-
-    # def run(self):
-        # os.makedirs(self._store_folder_name, exist_ok=True)
-        # with open(self._sample_name, "r", encoding="UTF-8") as file:
-        #     code = file.read()
-        # self._code = code
-        # self.gen_function()

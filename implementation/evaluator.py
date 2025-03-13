@@ -84,8 +84,7 @@ def _trim_function_body(generated_code: str) -> str:
 
 
 def _sample_to_program(
-        sample: sample_iterator.SampleIterator,
-        indices: list[int],
+        generated_code: str,
         # version_generated: int | None,
         template: code_manipulation.Program,
         function_to_evolve: str,
@@ -93,25 +92,10 @@ def _sample_to_program(
     """Returns the compiled generated function and the full runnable program.
     RZ: This function removes the code after the generated function body.
     """
-    generated_code = sample.get_instance(indices)
     body = _trim_function_body(generated_code)
-    # if version_generated is not None:
-    #     body = code_manipulation.rename_function_calls(
-    #         code=body,
-    #         source_name=f'{function_to_evolve}_v{version_generated}',
-    #         target_name=function_to_evolve
-    #     )
-
     program = copy.deepcopy(template)
     evolved_function = program.get_function(function_to_evolve)
     evolved_function.body = body
-
-    # generated_code = sample.get_template()
-    # body = _trim_function_body(generated_code)
-    # register = copy.deepcopy(template)
-    # register_function = register.get_function(function_to_evolve)
-    # register_function.body = body
-
     return evolved_function, str(program)
 
 
@@ -174,7 +158,7 @@ class Evaluator:
 
     def analyse(
             self,
-            sample_list: list[sample_iterator.SampleIterator],
+            tune_sampler: sample_iterator.SampleIterator,
             indices_list: list[int],
             # version_generated: int | None,
             **kwargs  # RZ: add this to do profile
@@ -194,9 +178,10 @@ class Evaluator:
         scores_per_test_list = []
         # register_list = []
 
-        for sample, indices in zip(sample_list, indices_list):
+        for indices in indices_list:
+            generated_code, decisions = tune_sampler.get_instance(indices)
             new_function, program = _sample_to_program(
-                sample, indices, self._template, self._function_to_evolve)
+                generated_code, self._template, self._function_to_evolve)
             scores_per_test = {}
 
             new_function_list.append(new_function)

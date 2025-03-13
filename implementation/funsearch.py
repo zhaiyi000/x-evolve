@@ -88,8 +88,8 @@ def main(
 
     # We send the initial implementation to be analysed by one of the evaluators.
     initial = template.get_function(function_to_evolve).body
-    score_list = evaluator_ins.analyse([sample_iterator.SampleIterator(initial)], [[]], profiler=profiler)
-    new_function = sampler.sample_to_program(initial, template, function_to_evolve)
+    score_list = evaluator_ins.analyse(sample_iterator.SampleIterator(initial), [[]], profiler=profiler)
+    new_function, _ = evaluator._sample_to_program(initial, template, function_to_evolve)
     database.register_program(new_function, max(score_list))
 
     # Set global max sample nums.
