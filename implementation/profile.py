@@ -138,9 +138,13 @@ class Profiler:
         if evaluate_time:
             self._tot_evaluate_time += evaluate_time
 
-        # update ...
-        # self._each_sample_best_program_score.append(self._cur_best_program_score)
-        # self._each_sample_evaluate_success_program_num.append(self._evaluate_success_program_num)
-        # self._each_sample_evaluate_failed_program_num.append(self._evaluate_failed_program_num)
-        # self._each_sample_tot_sample_time.append(self._tot_sample_time)
-        # self._each_sample_tot_evaluate_time.append(self._tot_evaluate_time)
+    
+    def register_function_list(self, global_sample_nums_list, new_function_list, sample_time, evaluate_time, score_list):
+        if global_sample_nums_list is None:
+            global_sample_nums_list = [None] * len(new_function_list)
+        for new_function, score, global_sample_nums in zip(new_function_list, score_list, global_sample_nums_list):
+            new_function.global_sample_nums = global_sample_nums
+            new_function.score = score
+            new_function.sample_time = sample_time
+            new_function.evaluate_time = evaluate_time
+            self.register_function(new_function)
