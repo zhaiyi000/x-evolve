@@ -112,8 +112,8 @@ class Sampler:
         self._template = template
         self._function_to_evolve = function_to_evolve
         self._mux_sem = threading.Semaphore(1)
-        self._queue = queue.Queue()
         self._llm_cnt = 10
+        self._queue = queue.Queue(max(self._llm_cnt//3, 1))
 
 
     def launch_llm(self, thread_i, llm):
