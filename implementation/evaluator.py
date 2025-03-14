@@ -177,7 +177,7 @@ class Evaluator:
             sample_list: list[sample_iterator.SampleIterator],
             indices_list: list[int],
             # version_generated: int | None,
-            **kwargs  # RZ: add this to do profile
+            # **kwargs  # RZ: add this to do profile
     ) -> None:
         """Compiles the sample into a program and executes it on test inputs.
 
@@ -191,7 +191,8 @@ class Evaluator:
 
         new_function_list = []
         program_list = []
-        scores_per_test_list = []
+        # scores_per_test_list = []
+        score_list = []
         # register_list = []
 
         for sample, indices in zip(sample_list, indices_list):
@@ -201,7 +202,7 @@ class Evaluator:
 
             new_function_list.append(new_function)
             program_list.append(program)
-            scores_per_test_list.append(scores_per_test)
+            # scores_per_test_list.append(scores_per_test)
             # register_list.append(register)
 
 
@@ -216,12 +217,16 @@ class Evaluator:
                 self._timeout_seconds
             )
 
-            for (test_output, runs_ok), scores_per_test in zip(result_list, scores_per_test_list):
+            scores_per_test = {}
+            for test_output, runs_ok in result_list:
                 if runs_ok and not _calls_ancestor(program, self._function_to_evolve) and test_output is not None:
                     if not isinstance(test_output, (int, float)):
                         print(f'RZ=> Error: test_output is {test_output}')
                         raise ValueError('@function.run did not return an int/float score.')
                     scores_per_test[current_input] = test_output
+
+            score = programs_database.reduce_score(scores_per_test) if scores_per_test else None
+            score_list.append(score)
 
         evaluate_time = time.time() - time_reset
 
@@ -229,29 +234,5 @@ class Evaluator:
         # This is because the register_program will do reduction for a given Function score.
         # If 'score_per_test' is empty, we record it to the profiler at once.
         # if scores_per_test:
-        score_list = []
-        profiler: profile.Profiler = kwargs.get('profiler', None)
-        global_sample_nums_list = kwargs.get('global_sample_nums_list', None)
-        num_i = 0
-        for new_function, scores_per_test, indices in zip(new_function_list, scores_per_test_list, indices_list):
-            # score = self._database.register_program(
-            #     register,
-            #     scores_per_test,
-            #     # **kwargs,
-            #     # evaluate_time=evaluate_time
-            # )
-            score = programs_database.reduce_score(scores_per_test) if scores_per_test else None
-            score_list.append(score)
-            # else:
-            if profiler:
-                sample_time = kwargs.get('sample_time', None)
-                global_sample_nums = None
-                if global_sample_nums_list:
-                    global_sample_nums = global_sample_nums_list[num_i]
-                    num_i += 1
-                new_function.global_sample_nums = global_sample_nums
-                new_function.score = score
-                new_function.sample_time = sample_time
-                new_function.evaluate_time = evaluate_time
-                profiler.register_function(new_function)
-        return score_list
+        
+        return new_function_list, evaluate_time, score_list

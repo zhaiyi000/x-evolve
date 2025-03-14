@@ -91,8 +91,8 @@ class LLM(ABC):
 class Sampler:
     """Node that samples program continuations and sends them for analysis.
     """
-    _global_samples_nums: int = 1  # RZ: this variable records the global sample nums
-    _global_spaces_nums: int = 1
+    _global_samples_nums: int = 0
+    _global_spaces_nums: int = 0
 
     def __init__(
             self,
@@ -119,73 +119,27 @@ class Sampler:
     def launch_llm(self, thread_i, llm):
         try:
             while True:
-                print('current thread_i', thread_i)
                 with self._mux_sem:
                     # stop the search process if hit global max sample nums
-                    if self._max_sample_nums and self.__class__._global_spaces_nums >= self._max_sample_nums:
+                    if self._max_sample_nums and self._get_global_spaces_nums() >= self._max_sample_nums:
                         self._queue.put('end')
                         break
-                    # try:
                     prompt, parent_score = self._database.get_prompt()
                     llm_ins = llm.calculate_probability()
+                    print('thread_i', thread_i, llm_ins.llm_name, 'request...')
                 reset_time = time.time()
                 samples = self._llm.draw_samples(llm_ins, prompt.code)
                 sample_time = (time.time() - reset_time) / self._samples_per_prompt
                 self._queue.put((samples, sample_time, llm_ins, parent_score))
-                time.sleep(0.1)
+                with self._mux_sem:
+                    self._global_spaces_nums_plus_one()
+                    print('thread_i', thread_i, 'done!', f'call llm times: {self._get_global_spaces_nums()}')
         except Exception as err:
-            print('current thread_i', thread_i)
+            print('thread_i', thread_i)
             print('errrrrrr', 'launch_llm', err)
 
-    def update_database(self, samples, sample_time, llm_ins, parent_score, llm, kwargs):
-        # samples_new = []
-        for sample in samples:
-            print('-------------------')
-            print(sample)
-            print(f'call llm times: {self._get_global_spaces_nums()}')
-            print('-------------------\n\n')
-            self._global_spaces_nums_plus_one()
-            tune_sampler = sample_iterator.SampleIterator(code=sample)
-            batch_size = 64
-            MIN_SCORE = -1e10
-            max_score = MIN_SCORE
-            while True:
-                indices, instances = tune_sampler.batch_sample(batch_size=batch_size)
-
-                num_list = []
-                for _ in instances:
-                    self._global_sample_nums_plus_one()  # RZ: add _global_sample_nums
-                    cur_global_sample_nums = self._get_global_sample_nums()
-                    num_list.append(cur_global_sample_nums)
-                
-                score_list = self._evaluator.analyse(
-                    instances,
-                    indices,
-                    # prompt.version_generated,
-                    **kwargs,
-                    global_sample_nums_list=num_list,
-                    sample_time=sample_time
-                )
-                # score_list = [max_score, *[x for x in score_list if x]]
-                max_score = max([max_score, *[x for x in score_list if x]])
-                
-                if tune_sampler.update_score(indices, score_list) is False:
-                    print('sampler suggest should end sample, break')
-                    break
-
-            if max_score != MIN_SCORE:
-                function_code = tune_sampler.get_final_code()
-                new_function = sample_to_program(
-                    function_code, self._template, self._function_to_evolve)
-
-                self._database.register_program(
-                    new_function,
-                    max_score,
-                )
-            llm.call_llm(llm_ins, parent_score, max_score)
-
-
-    def sample(self, **kwargs):
+    
+    def sample(self, profiler):
         """Continuously gets prompts, samples programs, sends them for analysis.
         """
         llm = sample_llm_api.EvaluateLLM()
@@ -197,10 +151,50 @@ class Sampler:
             llm_return_obj = self._queue.get()
             if llm_return_obj == 'end':
                 break
+            samples, sample_time, llm_ins, parent_score = llm_return_obj
+            self.update_database(samples, sample_time, llm_ins, parent_score, llm, profiler)
+    
+    
+    def update_database(self, samples, sample_time, llm_ins, parent_score, llm, profiler):
+        # samples_new = []
+        for sample in samples:
             with self._mux_sem:
-                samples, sample_time, llm_ins, parent_score = llm_return_obj
-                self.update_database(samples, sample_time, llm_ins, parent_score, llm, kwargs)
+                tune_sampler = sample_iterator.SampleIterator(code=sample)
+                batch_size = 64
+                MIN_SCORE = -1e10
+                max_score = MIN_SCORE
+            while True:
+                with self._mux_sem:
+                    indices, instances = tune_sampler.batch_sample(batch_size=batch_size)
+
+                    global_sample_nums_list = []
+                    for _ in instances:
+                        self._global_sample_nums_plus_one()  # RZ: add _global_sample_nums
+                        cur_global_sample_nums = self._get_global_sample_nums()
+                        global_sample_nums_list.append(cur_global_sample_nums)
                 
+                new_function_list, evaluate_time, score_list = self._evaluator.analyse(instances, indices)
+                
+                with self._mux_sem:
+                    profiler.register_function_list(global_sample_nums_list, new_function_list, sample_time, evaluate_time, score_list)
+                    max_score = max([max_score, *[x for x in score_list if x]])
+                    
+                    if tune_sampler.update_score(indices, score_list) is False:
+                        print('sampler suggest should end sample, break')
+                        break
+
+            with self._mux_sem:
+                if max_score != MIN_SCORE:
+                    function_code = tune_sampler.get_final_code()
+                    new_function = sample_to_program(
+                        function_code, self._template, self._function_to_evolve)
+
+                    self._database.register_program(
+                        new_function,
+                        max_score,
+                    )
+                llm.call_llm(llm_ins, parent_score, max_score)
+
 
     def _get_global_sample_nums(self) -> int:
         return self.__class__._global_samples_nums

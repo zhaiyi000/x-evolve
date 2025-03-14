@@ -75,11 +75,11 @@ def _trim_preface_of_body(sample: str) -> str:
 def request(llm_ins: sample_llm_api.LLM, prompt: str):
     for retry_i in range(5):
         try:
-            print(llm_ins.llm_name, 'request...')
+            # print(llm_ins.llm_name, 'request...')
             llm_ins = sample_llm_api.get_qwen_32b()
-            print('-----------------------')
-            print(prompt)
-            print('-----------------------')
+            # print('-----------------------')
+            # print(prompt)
+            # print('-----------------------')
 
             headers = {
                 'Authorization': llm_ins.api_key,
