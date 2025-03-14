@@ -97,8 +97,8 @@ class Sampler:
         self._template = template
         self._function_to_evolve = function_to_evolve
         self._mux_sem = threading.Semaphore(1)
-        self._queue = queue.Queue()
         self._llm_cnt = 10
+        self._queue = queue.Queue(max(self._llm_cnt//3, 1))
 
 
     def launch_llm(self, thread_i, llm):
@@ -150,18 +150,18 @@ class Sampler:
                 max_score = MIN_SCORE
             while True:
                 with self._mux_sem:
-                    indices, instances = tune_sampler.batch_sample(batch_size=batch_size)
+                    indices = tune_sampler.batch_sample(batch_size=batch_size)
 
                     global_sample_nums_list = []
-                    for _ in instances:
+                    for _ in indices:
                         self._global_sample_nums_plus_one()  # RZ: add _global_sample_nums
                         cur_global_sample_nums = self._get_global_sample_nums()
                         global_sample_nums_list.append(cur_global_sample_nums)
                 
-                new_function_list, evaluate_time, score_list = self._evaluator.analyse(instances, indices)
+                new_function_list, evaluate_time, score_list, decisions_list = self._evaluator.analyse(tune_sampler, indices)
                 
                 with self._mux_sem:
-                    profiler.register_function_list(global_sample_nums_list, new_function_list, sample_time, evaluate_time, score_list)
+                    profiler.register_function_list(global_sample_nums_list, new_function_list, sample_time, evaluate_time, score_list, decisions_list)
                     max_score = max([max_score, *[x for x in score_list if x]])
                     
                     if tune_sampler.update_score(indices, score_list) is False:
@@ -171,7 +171,7 @@ class Sampler:
             with self._mux_sem:
                 if max_score != MIN_SCORE:
                     function_code = tune_sampler.get_final_code()
-                    new_function = sample_to_program(
+                    new_function, _ = evaluator._sample_to_program(
                         function_code, self._template, self._function_to_evolve)
 
                     self._database.register_program(

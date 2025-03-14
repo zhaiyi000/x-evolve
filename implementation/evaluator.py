@@ -175,9 +175,7 @@ class Evaluator:
 
         new_function_list = []
         program_list = []
-        # scores_per_test_list = []
-        score_list = []
-        # register_list = []
+        scores_per_test_list = []
         sample_template = tune_sampler.get_template()
         sample_template, _ = _sample_to_program(
                 sample_template, self._template, self._function_to_evolve)
@@ -191,9 +189,8 @@ class Evaluator:
 
             new_function_list.append(new_function)
             program_list.append(program)
-            # scores_per_test_list.append(scores_per_test)
-            # register_list.append(register)
-
+            decisions_list.append(decisions)
+            scores_per_test_list.append(scores_per_test)
 
         time_reset = time.time()
         for current_input in self._inputs:
@@ -206,14 +203,15 @@ class Evaluator:
                 self._timeout_seconds
             )
 
-            scores_per_test = {}
-            for test_output, runs_ok in result_list:
+            for (test_output, runs_ok), scores_per_test in zip(result_list, scores_per_test_list):
                 if runs_ok and not _calls_ancestor(program, self._function_to_evolve) and test_output is not None:
                     if not isinstance(test_output, (int, float)):
                         print(f'RZ=> Error: test_output is {test_output}')
                         raise ValueError('@function.run did not return an int/float score.')
                     scores_per_test[current_input] = test_output
 
+        score_list = []
+        for scores_per_test in scores_per_test_list:
             score = programs_database.reduce_score(scores_per_test) if scores_per_test else None
             score_list.append(score)
 
@@ -224,4 +222,4 @@ class Evaluator:
         # If 'score_per_test' is empty, we record it to the profiler at once.
         # if scores_per_test:
         
-        return new_function_list, evaluate_time, score_list
+        return sample_template, evaluate_time, score_list, decisions_list
