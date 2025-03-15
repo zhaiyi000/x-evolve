@@ -6,8 +6,9 @@ from datasets import load_dataset
 import os
 import glob
 import natsort
+from concurrent.futures import ProcessPoolExecutor
 
-SPLIT_CHARS = '\{\}()[]\t\n: ,\'".'
+SPLIT_CHARS = '\{\}()[]\t\n: ,\'".+-=*/~|^?'
 PAD_TOKEN = '[PAD]'
 ANS_TOKEN = '[ANS]'
 SEP_TOKEN = '[SEP]'
@@ -19,29 +20,20 @@ FINDALL_RE = f'{PAD_CHAR_RE}|{ANS_CHAR_RE}|{SEP_CHAR_RE}|{SPLIT_CHARS_RE}|[^{SPL
 SPECIAL_TOKENS = [PAD_TOKEN, ANS_TOKEN, SEP_TOKEN]
 
 
-def tokenizer_encode_inner(vocab, pad_token_id, cls_token_id, sep_token_id, model_max_length, sentence, err_queue):
-    try:
-        words = re.findall(FINDALL_RE, sentence)
-        ids = [cls_token_id]
-        for word in words:
-            if word in vocab:
-                ids.append(vocab[word])
-            else:
-                assert re.match(r'^-?\d+(\.\d+)?$', word), 'must be an int or float'
-                for char in word:
-                    ids.append(vocab[char])
-        ids.append(sep_token_id)
-        mask = [1] * len(ids)
+def tokenizer_encode_inner(vocab, pad_token_id, ans_token_id, sep_token_id, model_max_length, function, decision, idx):
+    if idx % 1000 == 0:
+        print(idx)
+    words = re.findall(FINDALL_RE, function)
+    ids = [vocab[word] for word in words]
+    ids.append(ans_token_id)
+    ids += [vocab[word] for word in decision]
+    ids.append(sep_token_id)
+    mask = [1] * len(ids)
 
-        if model_max_length:
-            ids += [pad_token_id] * (model_max_length-len(ids))
-            mask += [0] * (model_max_length-len(mask))
-        return (ids, mask)
-    except Exception as err:
-        if err_queue:
-            err_queue.put(err)
-        else:
-            raise err
+    if model_max_length:
+        ids += [pad_token_id] * (model_max_length-len(ids))
+        mask += [0] * (model_max_length-len(mask))
+    return (ids, mask)
 
 
 def tokenizer_decode_inner(id_to_token, ids, err_queue, add_special_tokens, special_tokens):
@@ -72,9 +64,10 @@ class Tokenizer():
             
             self._model_max_length = tokenizer_dic['model_max_length']
             self._pad_token_id = self.vocab[PAD_TOKEN]
-            self._cls_token_id = self.vocab[CLS_TOKEN]
+            self._ans_token_id = self.vocab[ANS_TOKEN]
             self._sep_token_id = self.vocab[SEP_TOKEN]
-            self.special_tokens = [self._pad_token_id, self._cls_token_id, self._sep_token_id]
+            self.special_tokens = [self._pad_token_id, self._ans_token_id, self._sep_token_id]
+            self.executor = None
 
 
     def encode(self, sentence, padding=None):
@@ -83,34 +76,25 @@ class Tokenizer():
         return ids
 
 
-    def batch_encode(self, sentence_list, padding=None):
+    def batch_encode(self, function_list, decision_list, padding=None):
         model_max_length = self._model_max_length if padding == 'max_length' else None
-        if len(sentence_list) == 0:
-            return []
-        elif len(sentence_list) == 1:
-            ids, mask = tokenizer_encode_inner(self.vocab, self._pad_token_id, self._cls_token_id, self._sep_token_id, model_max_length, sentence_list[0], None)
-            return dict(input_ids=[ids], attention_mask=[mask])
+        if len(function_list) == 0:
+            raise Exception('todo')
+        elif len(function_list) == 1:
+            raise Exception('todo')
+            # ids, mask = tokenizer_encode_inner(self.vocab, self._pad_token_id, self._cls_token_id, self._sep_token_id, model_max_length, sentence_list[0], None)
+            # return dict(input_ids=[ids], attention_mask=[mask])
         else:
-            err_queue = multiprocessing.Manager().Queue()
-            pool_results = []
-            with multiprocessing.Pool(min(len(sentence_list), multiprocessing.cpu_count())) as pool:
-                for sentence in sentence_list:
-                    result = pool.apply_async(tokenizer_encode_inner, args=(self.vocab, self._pad_token_id, self._cls_token_id, self._sep_token_id, model_max_length, sentence, err_queue))
-                    pool_results.append(result)
-                pool.close()
-                pool.join()
+            if self.executor is None:
+                self.executor = ProcessPoolExecutor(max_workers=min(os.cpu_count(), 64))
 
-            if err_queue.empty() is False:
-                err = err_queue.get()
-                raise err
-
-            input_ids = []
-            attention_mask = []
-            for result in pool_results:
-                ids, mask = result.get()
-                input_ids.append(ids)
-                attention_mask.append(mask)
-            return dict(input_ids=input_ids, attention_mask=attention_mask)
+            executor = ProcessPoolExecutor(max_workers=min(os.cpu_count(), 64))
+            futures = [executor.submit(tokenizer_encode_inner, self.vocab, self._pad_token_id, self._ans_token_id, self._sep_token_id, model_max_length, function, decision, idx) for idx, (function, decision) in enumerate(zip(function_list, decision_list))]
+            result_list = []
+            for future in futures:
+                result = future.result()
+                result_list.append(result)
+            return result_list
     
 
     def decode(self, ids, add_special_tokens=True):
@@ -148,8 +132,8 @@ class Tokenizer():
         #     return sentence_list
     
 
-    def __call__(self, sentence_list, padding=None):
-        return self.batch_encode(sentence_list, padding=padding)
+    def __call__(self, function_list, decision_list, padding=None):
+        return self.batch_encode(function_list, decision_list, padding=padding)
 
 
     @property
@@ -160,9 +144,9 @@ class Tokenizer():
     def pad_token_id(self):
         return self._pad_token_id
     
-    @property
-    def cls_token_id(self):
-        return self._cls_token_id
+    # @property
+    # def cls_token_id(self):
+    #     return self._cls_token_id
     
     @property
     def sep_token_id(self):
@@ -202,55 +186,59 @@ class Tokenizer():
             json.dump(tokenizer_dic, f, indent=2)
 
 
-def test_model_max_length(file, save_path):
-    data_files = {}
-    data_files["train"] = file
-    extension = data_files["train"].split(".")[-1]
-    raw_datasets = load_dataset(
-        extension,
-        data_files=data_files,
-        keep_in_memory=True
-    )
-    raw_datasets["train"] = load_dataset(
-        extension,
-        data_files=data_files,
-        split=f"train",
-        keep_in_memory=True
-    )
-    tokenizer = Tokenizer.from_pretrained(save_path)
+def test_model_max_length(function_list, decision_list, tokenizer_path):
+    # data_files = {}
+    # data_files["train"] = file
+    # extension = data_files["train"].split(".")[-1]
+    # raw_datasets = load_dataset(
+    #     extension,
+    #     data_files=data_files,
+    #     keep_in_memory=True
+    # )
+    # raw_datasets["train"] = load_dataset(
+    #     extension,
+    #     data_files=data_files,
+    #     split=f"train",
+    #     keep_in_memory=True
+    # )
+    tokenizer = Tokenizer.from_pretrained(tokenizer_path)
 
-    model_max_length = -1
+    # def tokenize_function(examples):
+    #     encode = tokenizer(examples["text"])
+    #     input_ids = encode["input_ids"]
+    #     nonlocal model_max_length
+    #     for ids in input_ids:
+    #         model_max_length = max(model_max_length, len(ids))
+    #     return encode
 
-    def tokenize_function(examples):
-        encode = tokenizer(examples["text"])
-        input_ids = encode["input_ids"]
-        nonlocal model_max_length
-        for ids in input_ids:
-            model_max_length = max(model_max_length, len(ids))
-        return encode
+    # tokenized_datasets = raw_datasets.map(
+    #     tokenize_function,
+    #     batched=True,
+    #     num_proc=None,
+    #     load_from_cache_file=True,
+    #     desc="Running tokenizer on every text in dataset",
+    #     keep_in_memory=True
+    # )
+    tokens_list = tokenizer(function_list, decision_list)
 
-    tokenized_datasets = raw_datasets.map(
-        tokenize_function,
-        batched=True,
-        num_proc=None,
-        load_from_cache_file=True,
-        desc="Running tokenizer on every text in dataset",
-        keep_in_memory=True
-    )
+    model_max_length = max(len(tokens[0]) for tokens in tokens_list)
 
     print("model_max_length:", model_max_length)
     model_max_length = ((model_max_length - 1) // 32 + 1) * 32
-    tokenizer.save_pretrained(save_path, model_max_length=model_max_length)
+    tokenizer.save_pretrained(tokenizer_path, model_max_length=model_max_length)
 
 
 def main():
     files = []
-    files.extend(glob.glob('samples/*.json'))
+    files.extend(glob.glob('samples_1/*.json'))
+    files.extend(glob.glob('samples_2/*.json'))
+    files.extend(glob.glob('samples_3/*.json'))
     files = natsort.natsorted(files)
-    print(len(files))
 
     function_set = set()
     decision_set = set()
+    function_list = []
+    decision_list = []
 
     for file in files:
         with open(file, 'r') as f:
@@ -264,6 +252,10 @@ def main():
             function_set.add(function)
             decision_set.update(decisions)
 
+            function_list.append(function)
+            decision_list.append(decisions)
+
+    print(len(function_set), len(files), len(function_list))
 
     vocabulary = set()
     for function in function_set:
@@ -306,7 +298,7 @@ def main():
 
 
     # test_model_max_length
-    # test_model_max_length('json/body.json', tokenizer_path)
+    test_model_max_length(function_list, decision_list, tokenizer_path)
     
 
 
