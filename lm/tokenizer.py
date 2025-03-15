@@ -4,17 +4,19 @@ import re
 import multiprocessing
 from datasets import load_dataset
 import os
+import glob
+import natsort
 
 SPLIT_CHARS = '\{\}()[]\t\n: ,\'".'
 PAD_TOKEN = '[PAD]'
-CLS_TOKEN = '[CLS]'
+ANS_TOKEN = '[ANS]'
 SEP_TOKEN = '[SEP]'
 SPLIT_CHARS_RE = f'[{re.escape(SPLIT_CHARS)}]'
 PAD_CHAR_RE = f'{re.escape(PAD_TOKEN)}'
-CLS_CHAR_RE = f'{re.escape(CLS_TOKEN)}'
+ANS_CHAR_RE = f'{re.escape(ANS_TOKEN)}'
 SEP_CHAR_RE = f'{re.escape(SEP_TOKEN)}'
-FINDALL_RE = f'{PAD_CHAR_RE}|{CLS_CHAR_RE}|{SEP_CHAR_RE}|{SPLIT_CHARS_RE}|[^{SPLIT_CHARS_RE[1:-1]}]+'
-SPECIAL_TOKENS = [PAD_TOKEN, CLS_TOKEN, SEP_TOKEN]
+FINDALL_RE = f'{PAD_CHAR_RE}|{ANS_CHAR_RE}|{SEP_CHAR_RE}|{SPLIT_CHARS_RE}|[^{SPLIT_CHARS_RE[1:-1]}]+'
+SPECIAL_TOKENS = [PAD_TOKEN, ANS_TOKEN, SEP_TOKEN]
 
 
 def tokenizer_encode_inner(vocab, pad_token_id, cls_token_id, sep_token_id, model_max_length, sentence, err_queue):
@@ -242,28 +244,55 @@ def test_model_max_length(file, save_path):
 
 
 def main():
+    files = []
+    files.extend(glob.glob('samples/*.json'))
+    files = natsort.natsorted(files)
+    print(len(files))
+
+    function_set = set()
+    decision_set = set()
+
+    for file in files:
+        with open(file, 'r') as f:
+            info = json.load(f)
+        sample_order = info['sample_order']
+        function = info['function']
+        score = info['score']
+        decisions = info['decisions']
+
+        if score:
+            function_set.add(function)
+            decision_set.update(decisions)
+
+
     vocabulary = set()
-
-    number_chars = '0123456789.'
-
-    with open('json/body.json', 'r') as f:
-        body_list = f.read().strip().split('\n')
-        body_list = [json.loads(x) for x in body_list]
-
-    
-    for body in body_list:
-        body = body['text']
-
-        tokens = re.findall(FINDALL_RE, body)
-
+    for function in function_set:
+        tokens = re.findall(FINDALL_RE, function)
         vocabulary.update(tokens)
 
     vocabulary.update(list(SPLIT_CHARS))
+    vocabulary.update(decision_set)
+
+    # number_chars = '0123456789.'
+
+    # with open('json/body.json', 'r') as f:
+    #     body_list = f.read().strip().split('\n')
+    #     body_list = [json.loads(x) for x in body_list]
+
+    
+    # for body in body_list:
+    #     body = body['text']
+
+    #     tokens = re.findall(FINDALL_RE, body)
+
+    #     vocabulary.update(tokens)
+
+    # vocabulary.update(list(SPLIT_CHARS))
 
     vocab_list = list(vocabulary)
-    vocab_list = [x for x in vocab_list if re.match(r'^-?\d+(\.\d+)?$', x) is None]
-    vocab_list.extend(list(number_chars))
-    vocab_list = list(set(vocab_list))
+    # vocab_list = [x for x in vocab_list if re.match(r'^-?\d+(\.\d+)?$', x) is None]
+    # vocab_list.extend(list(number_chars))
+    # vocab_list = list(set(vocab_list))
     vocab_list.sort()
     for token in SPECIAL_TOKENS:
         if token in vocab_list:
@@ -277,7 +306,7 @@ def main():
 
 
     # test_model_max_length
-    test_model_max_length('json/body.json', tokenizer_path)
+    # test_model_max_length('json/body.json', tokenizer_path)
     
 
 
