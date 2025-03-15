@@ -20,20 +20,21 @@ FINDALL_RE = f'{PAD_CHAR_RE}|{ANS_CHAR_RE}|{SEP_CHAR_RE}|{SPLIT_CHARS_RE}|[^{SPL
 SPECIAL_TOKENS = [PAD_TOKEN, ANS_TOKEN, SEP_TOKEN]
 
 
-def tokenizer_encode_inner(vocab, pad_token_id, ans_token_id, sep_token_id, model_max_length, function, decision, idx):
-    if idx % 1000 == 0:
-        print(idx)
-    words = re.findall(FINDALL_RE, function)
-    ids = [vocab[word] for word in words]
-    ids.append(ans_token_id)
-    ids += [vocab[word] for word in decision]
-    ids.append(sep_token_id)
-    mask = [1] * len(ids)
+def tokenizer_encode_inner(vocab, pad_token_id, ans_token_id, sep_token_id, model_max_length, function_list, decision_list):
+    segent = []
+    for function, decision in zip(function_list, decision_list):
+        words = re.findall(FINDALL_RE, function)
+        ids = [vocab[word] for word in words]
+        ids.append(ans_token_id)
+        ids += [vocab[word] for word in decision]
+        ids.append(sep_token_id)
+        mask = [1] * len(ids)
 
-    if model_max_length:
-        ids += [pad_token_id] * (model_max_length-len(ids))
-        mask += [0] * (model_max_length-len(mask))
-    return (ids, mask)
+        if model_max_length:
+            ids += [pad_token_id] * (model_max_length-len(ids))
+            mask += [0] * (model_max_length-len(mask))
+        segent.append((ids, mask))
+    return segent
 
 
 def tokenizer_decode_inner(id_to_token, ids, err_queue, add_special_tokens, special_tokens):
@@ -85,16 +86,22 @@ class Tokenizer():
             # ids, mask = tokenizer_encode_inner(self.vocab, self._pad_token_id, self._cls_token_id, self._sep_token_id, model_max_length, sentence_list[0], None)
             # return dict(input_ids=[ids], attention_mask=[mask])
         else:
+            max_workers=min(os.cpu_count(), 64)
             if self.executor is None:
-                self.executor = ProcessPoolExecutor(max_workers=min(os.cpu_count(), 64))
+                self.executor = ProcessPoolExecutor(max_workers=max_workers)
 
-            executor = ProcessPoolExecutor(max_workers=min(os.cpu_count(), 64))
-            futures = [executor.submit(tokenizer_encode_inner, self.vocab, self._pad_token_id, self._ans_token_id, self._sep_token_id, model_max_length, function, decision, idx) for idx, (function, decision) in enumerate(zip(function_list, decision_list))]
+            worker_len = (len(function_list) + max_workers - 1) // max_workers
+            futures = []
+            for start in range(0, len(function_list), worker_len):
+                future = self.executor.submit(tokenizer_encode_inner, self.vocab, self._pad_token_id, self._ans_token_id, self._sep_token_id, model_max_length,
+                                              function_list[start:start+worker_len], decision_list[start:start+worker_len])
+                futures.append(future)
+
             result_list = []
             for future in futures:
                 result = future.result()
                 result_list.append(result)
-            return result_list
+            return [x for segment in result_list for x in segment]
     
 
     def decode(self, ids, add_special_tokens=True):
