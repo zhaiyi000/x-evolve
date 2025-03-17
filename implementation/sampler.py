@@ -122,7 +122,7 @@ class Sampler:
                 with self._mux_sem:
                     # stop the search process if hit global max sample nums
                     if self._max_sample_nums and self._get_global_spaces_nums() >= self._max_sample_nums:
-                        self._queue.put('end')
+                        # self._queue.put('end')
                         break
                     prompt, parent_score = self._database.get_prompt()
                     llm_ins = llm.calculate_probability()
