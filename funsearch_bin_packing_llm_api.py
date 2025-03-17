@@ -263,7 +263,7 @@ class Sandbox(evaluator.Sandbox):
         for future in futures:
             result = future.result()
             result_list.append(result)
-        del futures,executor
+        del futures, executor
         gc.collect()
         # print(f'evaluate tasks done')
         return result_list

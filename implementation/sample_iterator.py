@@ -22,6 +22,10 @@ def softmax(x, temperature, min_prob=1e-6):
     
     return probs
 
+TUNABLE = 'tunable'
+SAMPLE_REGULAR = f"{TUNABLE}\(\[(.*?)\]\)"
+SPLIT_CHAR = ','
+
 
 class SampleIterator:
 
@@ -31,8 +35,8 @@ class SampleIterator:
         self, code: str
     ):
         self._code = code
-        self._regular = "tunable\(\[(.*?)\]\)"
-        self._split = ','
+        self._regular = SAMPLE_REGULAR
+        self._split = SPLIT_CHAR
         self._temperature = 1
 
         matches = list(re.finditer(self._regular, self._code))

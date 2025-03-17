@@ -7,6 +7,7 @@ import os
 import glob
 import natsort
 from concurrent.futures import ProcessPoolExecutor
+from sample_iterator import SAMPLE_REGULAR, TUNABLE, SPLIT_CHAR
 
 SPLIT_CHARS = '\{\}()[]\t\n: ,\'".+-=*/~|^?'
 PAD_TOKEN = '[PAD]'
@@ -21,20 +22,32 @@ SPECIAL_TOKENS = [PAD_TOKEN, ANS_TOKEN, SEP_TOKEN]
 
 
 def tokenizer_encode_inner(vocab, pad_token_id, ans_token_id, sep_token_id, model_max_length, function_list, decision_list):
-    segent = []
-    for function, decision in zip(function_list, decision_list):
-        words = re.findall(FINDALL_RE, function)
-        ids = [vocab[word] for word in words]
-        ids.append(ans_token_id)
-        ids += [vocab[word] for word in decision]
-        ids.append(sep_token_id)
-        mask = [1] * len(ids)
+    try:
+        segent = []
+        for function, decision in zip(function_list, decision_list):
+            words = []
+            parts = re.split(SAMPLE_REGULAR, function)
+            for part_i, part in enumerate(parts):
+                if part_i % 2 == 0:
+                    words += re.findall(FINDALL_RE, part)
+                else:
+                    items = part.split(SPLIT_CHAR)
+                    items = [x.strip() for x in items]
+                    words += items
 
-        if model_max_length:
-            ids += [pad_token_id] * (model_max_length-len(ids))
-            mask += [0] * (model_max_length-len(mask))
-        segent.append((ids, mask))
-    return segent
+            ids = [vocab[word] for word in words]
+            ids.append(ans_token_id)
+            ids += [vocab[word] for word in decision]
+            ids.append(sep_token_id)
+            mask = [1] * len(ids)
+
+            if model_max_length:
+                ids += [pad_token_id] * (model_max_length-len(ids))
+                mask += [0] * (model_max_length-len(mask))
+            segent.append((ids, mask))
+        return segent
+    except Exception as err:
+        raise err
 
 
 def tokenizer_decode_inner(id_to_token, ids, err_queue, add_special_tokens, special_tokens):
@@ -237,15 +250,14 @@ def test_model_max_length(function_list, decision_list, tokenizer_path):
 
 def main():
     files = []
-    files.extend(glob.glob('samples_1/*.json'))
-    files.extend(glob.glob('samples_2/*.json'))
-    files.extend(glob.glob('samples_3/*.json'))
+    files.extend(glob.glob('/root/zhaiyi/funsearch/log_test4/funsearch_llm_api/samples/*.json'))
     files = natsort.natsorted(files)
 
     function_set = set()
     decision_set = set()
     function_list = []
     decision_list = []
+    function_total_set = set()
 
     for file in files:
         with open(file, 'r') as f:
@@ -255,17 +267,25 @@ def main():
         score = info['score']
         decisions = info['decisions']
 
+        function_total_set.add(function)
         if score:
+            matches = list(re.finditer(SAMPLE_REGULAR, function))
+            for match in reversed(matches):
+                options = match.group(1).split(SPLIT_CHAR)
+                options = [x.strip() for x in options]
+                decision_set.update(options)
+
             function_set.add(function)
-            decision_set.update(decisions)
+            # decision_set.update(decisions)
 
             function_list.append(function)
             decision_list.append(decisions)
 
-    print(len(function_set), len(files), len(function_list))
+    print(len(function_total_set), len(function_set), len(files), len(function_list))
 
     vocabulary = set()
     for function in function_set:
+        function = re.sub(SAMPLE_REGULAR, '', function)
         tokens = re.findall(FINDALL_RE, function)
         vocabulary.update(tokens)
 
