@@ -757,6 +757,7 @@ class Trainer:
         self.is_fsdp_xla_v1_enabled = self.is_fsdp_xla_enabled and not self.is_fsdp_xla_v2_enabled
 
         self.mse_loss = nn.MSELoss()
+        self.ce_loss = nn.CrossEntropyLoss(reduction='none')
 
     @property
     def tokenizer(self) -> Optional[PreTrainedTokenizerBase]:
@@ -3636,20 +3637,36 @@ class Trainer:
 
         Subclass and override for custom behavior.
         """
-        rewards = inputs.pop('rewards')
-        # inputs.pop('labels')
+        input_ids = inputs['input_ids']
         attention_mask = inputs['attention_mask']
-        outputs = model(**inputs)
-        lm_logits, value = outputs
+        labels = inputs['labels']
+        score = inputs['score']
+        device=input_ids.device
+        label_len = labels.shape[1]
+        batch_size, seq_len = input_ids.shape
 
-        attention_mask = attention_mask.float()
-        masked_value = value * attention_mask
-        masked_sum = masked_value.sum(dim=-1)
-        mask_sum = attention_mask.sum(dim=-1).clamp(min=1e-7)
-        mean_value = masked_sum / mask_sum
+        outputs = model(input_ids=input_ids, attention_mask=attention_mask)
+        lm_logits = outputs.logits
 
-        loss2 = self.mse_loss(mean_value, rewards)
-        loss1 = torch.zeros_like(loss2)
+        mask = (input_ids == self.processing_class.ans_token_id)
+        indices = mask.int().argmax(dim=1)
+        batch_indices = torch.arange(batch_size).unsqueeze(1)
+        seq_indices = indices.unsqueeze(1) + torch.arange(label_len, device=device).unsqueeze(0)
+        seq_indices = seq_indices.clamp(0, seq_len - 1)  
+
+        # selected_tokens = input_ids[batch_indices, seq_indices]
+        selected_logits = lm_logits[batch_indices, seq_indices]
+
+        shift_logits = selected_logits[:, :-1, :].contiguous()
+        shift_labels = labels[:, 1:].contiguous()
+
+        loss = self.ce_loss(shift_logits.view(-1, shift_logits.size(-1)), shift_labels.view(-1))
+        loss = loss.view(batch_size, -1) * score.unsqueeze(-1)
+
+        mask = shift_labels != -100
+        loss1 = loss[mask].mean()
+
+        loss2 = torch.zeros_like(loss1)
 
         loss = loss1 + loss2
         return ((loss, loss1, loss2), dict(logits=lm_logits)) if return_outputs else (loss, loss1, loss2)

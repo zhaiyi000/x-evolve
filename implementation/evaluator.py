@@ -92,10 +92,10 @@ def _sample_to_program(
     """Returns the compiled generated function and the full runnable program.
     RZ: This function removes the code after the generated function body.
     """
-    body = _trim_function_body(generated_code)
+    # body = _trim_function_body(generated_code)
     program = copy.deepcopy(template)
     evolved_function = program.get_function(function_to_evolve)
-    evolved_function.body = body
+    evolved_function.body = generated_code
     return evolved_function, str(program)
 
 
