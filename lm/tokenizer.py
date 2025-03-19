@@ -7,7 +7,7 @@ import os
 import glob
 import natsort
 from concurrent.futures import ProcessPoolExecutor
-from sample_iterator import SAMPLE_REGULAR, TUNABLE, SPLIT_CHAR
+from implementation import sample_iterator
 import numpy as np
 
 SPLIT_CHARS = '\{\}()[]\t\n: ,\'".+-=*/~|^?'
@@ -27,19 +27,20 @@ def tokenizer_encode_inner(vocab, pad_token_id, ans_token_id, sep_token_id, mode
         segent = []
         for function, decision in zip(function_list, decision_list):
             words = []
-            parts = re.split(SAMPLE_REGULAR, function)
+            parts = re.split(sample_iterator.SAMPLE_REGULAR, function)
             for part_i, part in enumerate(parts):
                 if part_i % 2 == 0:
                     words += re.findall(FINDALL_RE, part)
                 else:
-                    items = part.split(SPLIT_CHAR)
+                    items = part.split(sample_iterator.SPLIT_CHAR)
                     items = [x.strip() for x in items]
                     words += items
 
             ids = [vocab[word] for word in words]
             ids.append(ans_token_id)
-            ids += [vocab[word] for word in decision]
-            ids.append(sep_token_id)
+            if decision:
+                ids += [vocab[word] for word in decision]
+                ids.append(sep_token_id)
             mask = [1] * len(ids)
 
             if model_max_length:
@@ -51,17 +52,14 @@ def tokenizer_encode_inner(vocab, pad_token_id, ans_token_id, sep_token_id, mode
         raise err
 
 
-# def tokenizer_decode_inner(id_to_token, ids, err_queue, add_special_tokens, special_tokens):
-#     try:
-#         if add_special_tokens:
-#             return ''.join([id_to_token[x] for x in ids])
-#         else:
-#             return ''.join([id_to_token[x] for x in ids if x not in special_tokens])
-#     except Exception as err:
-#         if err_queue:
-#             err_queue.put(err)
-#         else:
-#             raise err
+def tokenizer_decode_inner(id_to_token, ids, add_special_tokens, special_tokens):
+    try:
+        if add_special_tokens:
+            return ''.join([id_to_token(x) for x in ids])
+        else:
+            return ''.join([id_to_token(x) for x in ids if x not in special_tokens])
+    except Exception as err:
+        raise err
 
 
 class Tokenizer():
@@ -71,16 +69,16 @@ class Tokenizer():
             with open(path, 'r') as f:
                 tokenizer_dic = json.load(f)
 
-            self.vocab = tokenizer_dic['vocab']
+            self._vocab = tokenizer_dic['vocab']
             
-            id_to_token_dic = list(self.vocab.items())
+            id_to_token_dic = list(self._vocab.items())
             id_to_token_dic.sort(key=lambda x: x[1])
-            self.id_to_token = [x[0] for x in id_to_token_dic]
+            self._id_to_token = [x[0] for x in id_to_token_dic]
             
             self._model_max_length = tokenizer_dic['model_max_length']
-            self._pad_token_id = self.vocab[PAD_TOKEN]
-            self._ans_token_id = self.vocab[ANS_TOKEN]
-            self._sep_token_id = self.vocab[SEP_TOKEN]
+            self._pad_token_id = self._vocab[PAD_TOKEN]
+            self._ans_token_id = self._vocab[ANS_TOKEN]
+            self._sep_token_id = self._vocab[SEP_TOKEN]
             self.special_tokens = [self._pad_token_id, self._ans_token_id, self._sep_token_id]
             self.executor = None
 
@@ -91,7 +89,7 @@ class Tokenizer():
     #     return ids
 
 
-    def batch_encode(self, function_list, decision_list, padding=None):
+    def batch_encode(self, function_list, decision_list, padding):
         model_max_length = self._model_max_length if padding == 'max_length' else None
         if len(function_list) == 0:
             raise Exception('todo')
@@ -107,7 +105,7 @@ class Tokenizer():
             worker_len = (len(function_list) + max_workers - 1) // max_workers
             futures = []
             for start in range(0, len(function_list), worker_len):
-                future = self.executor.submit(tokenizer_encode_inner, self.vocab, self._pad_token_id, self._ans_token_id, self._sep_token_id, model_max_length,
+                future = self.executor.submit(tokenizer_encode_inner, self._vocab, self._pad_token_id, self._ans_token_id, self._sep_token_id, model_max_length,
                                               function_list[start:start+worker_len], decision_list[start:start+worker_len])
                 futures.append(future)
 
@@ -118,8 +116,8 @@ class Tokenizer():
             return [x for segment in result_list for x in segment]
     
 
-    # def decode(self, ids, add_special_tokens=True):
-    #     return tokenizer_decode_inner(self.id_to_token, ids, None, add_special_tokens, self.special_tokens)
+    def decode(self, ids, add_special_tokens=True):
+        return tokenizer_decode_inner(self._id_to_token, ids, add_special_tokens, self.special_tokens)
     
 
     # def batch_decode(self, input_ids, add_special_tokens=True):
@@ -153,7 +151,9 @@ class Tokenizer():
         #     return sentence_list
     
 
-    def __call__(self, function_list, decision_list, padding=None):
+    def __call__(self, function_list, decision_list=None, padding=None):
+        if decision_list is None:
+            decision_list = [[]] * len(function_list)
         return self.batch_encode(function_list, decision_list, padding=padding)
 
 
@@ -179,11 +179,14 @@ class Tokenizer():
 
     @property
     def vocab_size(self):
-        return len(self.vocab)
+        return len(self._vocab)
 
     @classmethod
     def from_pretrained(cls, path):
         return Tokenizer(path)
+    
+    def id_to_token(self, id):
+        return self._id_to_token[id]
     
 
     def save_pretrained(self, dir_path, vocab_list=None, model_max_length=None):
@@ -192,7 +195,7 @@ class Tokenizer():
             for item_i, item in enumerate(vocab_list):
                 vocab[item] = item_i
         elif hasattr(self, 'vocab'):
-            vocab = self.vocab
+            vocab = self._vocab
         else:
             raise Exception('vocab is invalid')
         
@@ -270,9 +273,9 @@ def main():
 
         function_total_set.add(function)
         if score:
-            matches = list(re.finditer(SAMPLE_REGULAR, function))
+            matches = list(re.finditer(sample_iterator.SAMPLE_REGULAR, function))
             for match in reversed(matches):
-                options = match.group(1).split(SPLIT_CHAR)
+                options = match.group(1).split(sample_iterator.SPLIT_CHAR)
                 options = [x.strip() for x in options]
                 decision_set.update(options)
 

@@ -87,6 +87,17 @@ class SampleIterator:
         return function_code, decisions
     
 
+    def get_instance_by_decisions(self, decisions):
+        assert len(self.matches) == len(decisions)
+        function_code = self._code
+        for match, space, decision in zip(reversed(self.matches), reversed(self.tunable), reversed(decisions)):
+            start, end = match.span()
+            if decision not in space:
+                print('x', end='')
+            function_code = function_code[:start] + decision + function_code[end:]
+        return function_code
+    
+
     def get_template(self):
         return self._code
     

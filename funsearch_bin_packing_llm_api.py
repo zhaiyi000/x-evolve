@@ -21,6 +21,7 @@ import time
 from concurrent.futures import ProcessPoolExecutor
 import re
 import gc
+import os
 
 
 def _trim_preface_of_body(sample: str) -> str:
