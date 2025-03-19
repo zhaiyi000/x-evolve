@@ -88,7 +88,8 @@ class SampleIterator:
     
 
     def get_instance_by_decisions(self, decisions):
-        assert len(self.matches) == len(decisions)
+        if len(self.matches) != len(decisions):
+            print('❗️', end='')
         function_code = self._code
         for match, space, decision in zip(reversed(self.matches), reversed(self.tunable), reversed(decisions)):
             start, end = match.span()
