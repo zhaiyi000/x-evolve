@@ -31,6 +31,7 @@ from transformers.trainer_utils import get_last_checkpoint
 from transformers.utils import check_min_version, send_example_telemetry
 from transformers.utils.versions import require_version
 import numpy as np
+import torch.nn.functional as F
 # from trl import AutoModelForCausalLMWithValueHead
 # from ddd_model import GPT2WithRegression
 os.environ["WANDB_DISABLED"] = "true"
@@ -49,13 +50,29 @@ MODEL_TYPES = tuple(conf.model_type for conf in MODEL_CONFIG_CLASSES)
 
 
 def ddd_data_collator(features):
+    mask_token = 3
+
     for feature in features:
-        for key in ['input_ids', 'attention_mask', 'labels']:
-            feature[key] = torch.tensor(feature[key], dtype=torch.long)
+        input_ids = torch.tensor(feature['input_ids'], dtype=torch.long)
+        labels = torch.tensor(feature['labels'], dtype=torch.long)
+
+        num_elements = len(labels)
+        replace_num = math.ceil(num_elements * 0.15)
+
+        if replace_num > 0:
+            replace_indices = torch.randperm(num_elements)[:replace_num]
+            labels[replace_indices] = mask_token
+        
+        feature['input_ids'] = torch.cat([input_ids, labels])
+        feature['labels'] = labels
+        feature['attention_mask'] = torch.ones_like(feature['input_ids'], dtype=torch.long)
 
     def pad_tensor(key, pad_value=0):
         tensors = [f[key] for f in features]
-        return torch.nn.utils.rnn.pad_sequence(tensors, batch_first=True, padding_value=pad_value)
+        max_len = max(len(seq) for seq in tensors)
+        tensors = [F.pad(seq, (max_len - len(seq), 0), value=pad_value) for seq in tensors]
+        tensors = torch.stack(tensors)
+        return tensors
     
     batch = {
         "input_ids": pad_tensor("input_ids", pad_value=0),

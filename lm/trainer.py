@@ -3641,35 +3641,27 @@ class Trainer:
         attention_mask = inputs['attention_mask']
         labels = inputs['labels']
         score = inputs['score']
-        device=input_ids.device
-        label_len = labels.shape[1]
-        batch_size, seq_len = input_ids.shape
 
         outputs = model(input_ids=input_ids, attention_mask=attention_mask)
         lm_logits = outputs.logits
 
-        mask = (input_ids == self.processing_class.ans_token_id)
-        indices = mask.int().argmax(dim=1)
-        batch_indices = torch.arange(batch_size).unsqueeze(1)
-        seq_indices = indices.unsqueeze(1) + torch.arange(label_len, device=device).unsqueeze(0)
-        seq_indices = seq_indices.clamp(0, seq_len - 1)  
+        labels_len = labels.shape[1]
+        labels_ids = input_ids[:, -labels_len:]
+        laebls_logits = lm_logits[:, -labels_len:]
 
-        # selected_tokens = input_ids[batch_indices, seq_indices]
-        selected_logits = lm_logits[batch_indices, seq_indices]
+        mask = labels_ids == self.processing_class.mask_token_id
+        laebls_logits = laebls_logits[mask]
+        labels = labels[mask]
 
-        shift_logits = selected_logits[:, :-1, :].contiguous()
-        shift_labels = labels[:, 1:].contiguous()
+        repeat_counts = mask.sum(dim=1)
+        new_scores = torch.repeat_interleave(score, repeat_counts)
 
-        loss = self.ce_loss(shift_logits.view(-1, shift_logits.size(-1)), shift_labels.view(-1))
-        loss = loss.view(batch_size, -1) * score.unsqueeze(-1)
-
-        mask = shift_labels != -100
-        loss1 = loss[mask].mean()
-
+        loss = self.ce_loss(laebls_logits, labels) * new_scores
+        loss1 = loss.mean()
         loss2 = torch.zeros_like(loss1)
-
         loss = loss1 + loss2
         return ((loss, loss1, loss2), dict(logits=lm_logits)) if return_outputs else (loss, loss1, loss2)
+
 
     def is_local_process_zero(self) -> bool:
         """

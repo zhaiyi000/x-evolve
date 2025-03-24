@@ -14,18 +14,22 @@ SPLIT_CHARS = '\{\}()[]\t\n: ,\'".+-=*/~|^?'
 PAD_TOKEN = '[PAD]'
 ANS_TOKEN = '[ANS]'
 SEP_TOKEN = '[SEP]'
+MASK_TOKEN = '[MASK]'
 SPLIT_CHARS_RE = f'[{re.escape(SPLIT_CHARS)}]'
 PAD_CHAR_RE = f'{re.escape(PAD_TOKEN)}'
 ANS_CHAR_RE = f'{re.escape(ANS_TOKEN)}'
 SEP_CHAR_RE = f'{re.escape(SEP_TOKEN)}'
-FINDALL_RE = f'{PAD_CHAR_RE}|{ANS_CHAR_RE}|{SEP_CHAR_RE}|{SPLIT_CHARS_RE}|[^{SPLIT_CHARS_RE[1:-1]}]+'
-SPECIAL_TOKENS = [PAD_TOKEN, ANS_TOKEN, SEP_TOKEN]
+MASK_CHAR_RE = f'{re.escape(MASK_TOKEN)}'
+FINDALL_RE = f'{PAD_CHAR_RE}|{ANS_CHAR_RE}|{SEP_CHAR_RE}|{MASK_CHAR_RE}|{SPLIT_CHARS_RE}|[^{SPLIT_CHARS_RE[1:-1]}]+'
+SPECIAL_TOKENS = [PAD_TOKEN, ANS_TOKEN, SEP_TOKEN, MASK_TOKEN]
 
 
-def tokenizer_encode_inner(vocab, pad_token_id, ans_token_id, sep_token_id, model_max_length, function_list, decision_list):
+def tokenizer_encode_inner(vocab, pad_token_id, ans_token_id, sep_token_id, function_list, decision_list):
     try:
         segent = []
-        for function, decision in zip(function_list, decision_list):
+        if decision_list:
+            decision_it = iter(decision_list)
+        for function in function_list:
             words = []
             parts = re.split(sample_iterator.SAMPLE_REGULAR, function)
             for part_i, part in enumerate(parts):
@@ -38,15 +42,13 @@ def tokenizer_encode_inner(vocab, pad_token_id, ans_token_id, sep_token_id, mode
 
             ids = [vocab[word] for word in words]
             ids.append(ans_token_id)
-            if decision:
-                ids += [vocab[word] for word in decision]
-                ids.append(sep_token_id)
-            mask = [1] * len(ids)
+            labels = None
+            if decision_list:
+                decision = next(decision_it)
+                labels = [vocab[word] for word in decision]
+                # labels.append(sep_token_id)
 
-            if model_max_length:
-                ids += [pad_token_id] * (model_max_length-len(ids))
-                mask += [0] * (model_max_length-len(mask))
-            segent.append((ids, mask))
+            segent.append((ids, labels))
         return segent
     except Exception as err:
         raise err
@@ -79,6 +81,7 @@ class Tokenizer():
             self._pad_token_id = self._vocab[PAD_TOKEN]
             self._ans_token_id = self._vocab[ANS_TOKEN]
             self._sep_token_id = self._vocab[SEP_TOKEN]
+            self._mask_token_id = self._vocab[MASK_TOKEN]
             self.special_tokens = [self._pad_token_id, self._ans_token_id, self._sep_token_id]
             self.executor = None
 
@@ -90,7 +93,6 @@ class Tokenizer():
 
 
     def batch_encode(self, function_list, decision_list, padding):
-        model_max_length = self._model_max_length if padding == 'max_length' else None
         if len(function_list) == 0:
             raise Exception('todo')
         elif len(function_list) == 1:
@@ -105,7 +107,7 @@ class Tokenizer():
             worker_len = (len(function_list) + max_workers - 1) // max_workers
             futures = []
             for start in range(0, len(function_list), worker_len):
-                future = self.executor.submit(tokenizer_encode_inner, self._vocab, self._pad_token_id, self._ans_token_id, self._sep_token_id, model_max_length,
+                future = self.executor.submit(tokenizer_encode_inner, self._vocab, self._pad_token_id, self._ans_token_id, self._sep_token_id,
                                               function_list[start:start+worker_len], decision_list[start:start+worker_len])
                 futures.append(future)
 
@@ -152,8 +154,6 @@ class Tokenizer():
     
 
     def __call__(self, function_list, decision_list=None, padding=None):
-        if decision_list is None:
-            decision_list = [[]] * len(function_list)
         return self.batch_encode(function_list, decision_list, padding=padding)
 
 
@@ -172,6 +172,10 @@ class Tokenizer():
     @property
     def sep_token_id(self):
         return self._sep_token_id
+    
+    @property
+    def mask_token_id(self):
+        return self._mask_token_id
 
     # @property
     # def eos_token_id(self):
@@ -194,7 +198,7 @@ class Tokenizer():
             vocab = {}
             for item_i, item in enumerate(vocab_list):
                 vocab[item] = item_i
-        elif hasattr(self, 'vocab'):
+        elif hasattr(self, '_vocab'):
             vocab = self._vocab
         else:
             raise Exception('vocab is invalid')
@@ -213,7 +217,7 @@ class Tokenizer():
 def test_model_max_length(function_list, decision_list, tokenizer_path):
     tokenizer = Tokenizer.from_pretrained(tokenizer_path)
     tokens_list = tokenizer(function_list, decision_list)
-    model_max_length = max(len(tokens[0]) for tokens in tokens_list)
+    model_max_length = max(len(tokens[0])+len(tokens[1]) for tokens in tokens_list)
     print("model_max_length:", model_max_length)
     model_max_length = ((model_max_length - 1) // 32 + 1) * 32
     tokenizer.save_pretrained(tokenizer_path, model_max_length=model_max_length)
@@ -228,9 +232,6 @@ def make_dataset(function_list, decision_list, score_list, tokenizer_path):
     tokens_list = tokenizer(function_list, decision_list)
     print('tokenizer done')
 
-    ans_token = tokenizer.vocab[ANS_TOKEN]
-    sep_token = tokenizer.vocab[SEP_TOKEN]
-
     score_list = np.array(score_list)
     if np.max(score_list) == np.min(score_list):
         raise Exception('todo')
@@ -238,10 +239,9 @@ def make_dataset(function_list, decision_list, score_list, tokenizer_path):
     score_list = np.exp(c_1 * (score_list - 1))
 
     data_list = []
-    for idx, ((input_ids, attention_mask), score) in enumerate(zip(tokens_list, score_list)):
+    for idx, ((input_ids, labels), score) in enumerate(zip(tokens_list, score_list)):
         print(idx, len(tokens_list), end='           \r')
-        labels = input_ids[input_ids.index(ans_token):input_ids.index(sep_token)+1]
-        data = dict(input_ids=input_ids, attention_mask=attention_mask, labels=labels, score=score)
+        data = dict(input_ids=input_ids, labels=labels, score=score)
         data_list.append(data)
 
     dataset = Dataset.from_list(data_list)
@@ -291,28 +291,28 @@ def main():
 
     print(len(function_total_set), len(function_set), len(files), len(function_list))
 
-    # vocabulary = set()
-    # for function in function_set:
-    #     function = re.sub(SAMPLE_REGULAR, '', function)
-    #     tokens = re.findall(FINDALL_RE, function)
-    #     vocabulary.update(tokens)
+    vocabulary = set()
+    for function in function_set:
+        function = re.sub(sample_iterator.SAMPLE_REGULAR, '', function)
+        tokens = re.findall(FINDALL_RE, function)
+        vocabulary.update(tokens)
 
-    # vocabulary.update(list(SPLIT_CHARS))
-    # vocabulary.update(decision_set)
-    # vocab_list = list(vocabulary)
-    # vocab_list.sort()
-    # for token in SPECIAL_TOKENS:
-    #     if token in vocab_list:
-    #         vocab_list.remove(token)
-    # vocab_list = SPECIAL_TOKENS + vocab_list
-    # print(len(vocab_list))
+    vocabulary.update(list(SPLIT_CHARS))
+    vocabulary.update(decision_set)
+    vocab_list = list(vocabulary)
+    vocab_list.sort()
+    for token in SPECIAL_TOKENS:
+        if token in vocab_list:
+            vocab_list.remove(token)
+    vocab_list = SPECIAL_TOKENS + vocab_list
+    print(len(vocab_list))
 
     tokenizer_path = 'tokenizer'
-    # tokenizer = Tokenizer()
-    # tokenizer.save_pretrained(tokenizer_path, vocab_list=vocab_list)
+    tokenizer = Tokenizer()
+    tokenizer.save_pretrained(tokenizer_path, vocab_list=vocab_list)
 
     # # test_model_max_length
-    # test_model_max_length(function_list, decision_list, tokenizer_path)
+    test_model_max_length(function_list, decision_list, tokenizer_path)
 
     make_dataset(function_list, decision_list, score_list, tokenizer_path)
     
