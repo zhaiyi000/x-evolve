@@ -24,12 +24,17 @@ FINDALL_RE = f'{PAD_CHAR_RE}|{ANS_CHAR_RE}|{SEP_CHAR_RE}|{MASK_CHAR_RE}|{SPLIT_C
 SPECIAL_TOKENS = [PAD_TOKEN, ANS_TOKEN, SEP_TOKEN, MASK_TOKEN]
 
 
-def tokenizer_encode_inner(vocab, pad_token_id, ans_token_id, sep_token_id, function_list, decision_list):
+def tokenizer_encode_inner(vocab, pad_token_id, ans_token_id, sep_token_id, function_list):
     try:
         segent = []
-        if decision_list:
-            decision_it = iter(decision_list)
         for function in function_list:
+            if len(function) == 1:
+                function = function[0]
+                decision = None
+            elif len(function) == 2:
+                function, decision = function
+            else:
+                raise Exception('wrong function len')
             words = []
             parts = re.split(sample_iterator.SAMPLE_REGULAR, function)
             for part_i, part in enumerate(parts):
@@ -43,8 +48,7 @@ def tokenizer_encode_inner(vocab, pad_token_id, ans_token_id, sep_token_id, func
             ids = [vocab[word] for word in words]
             ids.append(ans_token_id)
             labels = None
-            if decision_list:
-                decision = next(decision_it)
+            if decision:
                 labels = [vocab[word] for word in decision]
                 # labels.append(sep_token_id)
 
@@ -92,7 +96,7 @@ class Tokenizer():
     #     return ids
 
 
-    def batch_encode(self, function_list, decision_list, padding):
+    def batch_encode(self, function_list, padding):
         if len(function_list) == 0:
             raise Exception('todo')
         elif len(function_list) == 1:
@@ -108,7 +112,7 @@ class Tokenizer():
             futures = []
             for start in range(0, len(function_list), worker_len):
                 future = self.executor.submit(tokenizer_encode_inner, self._vocab, self._pad_token_id, self._ans_token_id, self._sep_token_id,
-                                              function_list[start:start+worker_len], decision_list[start:start+worker_len])
+                                              function_list[start:start+worker_len])
                 futures.append(future)
 
             result_list = []
@@ -153,8 +157,8 @@ class Tokenizer():
         #     return sentence_list
     
 
-    def __call__(self, function_list, decision_list=None, padding=None):
-        return self.batch_encode(function_list, decision_list, padding=padding)
+    def __call__(self, function_list, padding=None):
+        return self.batch_encode(function_list, padding=padding)
 
 
     @property
@@ -214,9 +218,9 @@ class Tokenizer():
             json.dump(tokenizer_dic, f, indent=2)
 
 
-def test_model_max_length(function_list, decision_list, tokenizer_path):
+def test_model_max_length(function_list, tokenizer_path):
     tokenizer = Tokenizer.from_pretrained(tokenizer_path)
-    tokens_list = tokenizer(function_list, decision_list)
+    tokens_list = tokenizer(function_list)
     model_max_length = max(len(tokens[0])+len(tokens[1]) for tokens in tokens_list)
     print("model_max_length:", model_max_length)
     model_max_length = ((model_max_length - 1) // 32 + 1) * 32
@@ -224,12 +228,12 @@ def test_model_max_length(function_list, decision_list, tokenizer_path):
 
 
 
-def make_dataset(function_list, decision_list, score_list, tokenizer_path):
+def make_dataset(function_list, score_list, tokenizer_path):
     dataset_path = 'dataset'
     c_1 = 100
 
     tokenizer = Tokenizer.from_pretrained(tokenizer_path)
-    tokens_list = tokenizer(function_list, decision_list)
+    tokens_list = tokenizer(function_list)
     print('tokenizer done')
 
     score_list = np.array(score_list)
@@ -259,7 +263,6 @@ def main():
     function_set = set()
     decision_set = set()
     function_list = []
-    decision_list = []
     score_list = []
     function_total_set = set()
 
@@ -285,8 +288,7 @@ def main():
             if len(matches) != len(decisions):
                 raise Exception('matches len not equal to decision len')
 
-            function_list.append(function)
-            decision_list.append(decisions)
+            function_list.append((function, decisions))
             score_list.append(score)
 
     print(len(function_total_set), len(function_set), len(files), len(function_list))
@@ -312,9 +314,9 @@ def main():
     tokenizer.save_pretrained(tokenizer_path, vocab_list=vocab_list)
 
     # # test_model_max_length
-    test_model_max_length(function_list, decision_list, tokenizer_path)
+    test_model_max_length(function_list, tokenizer_path)
 
-    make_dataset(function_list, decision_list, score_list, tokenizer_path)
+    make_dataset(function_list, score_list, tokenizer_path)
     
 
 

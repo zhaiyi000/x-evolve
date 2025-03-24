@@ -55,15 +55,16 @@ def ddd_data_collator(features):
     for feature in features:
         input_ids = torch.tensor(feature['input_ids'], dtype=torch.long)
         labels = torch.tensor(feature['labels'], dtype=torch.long)
+        labels_ids = labels.clone()
 
-        num_elements = len(labels)
+        num_elements = len(labels_ids)
         replace_num = math.ceil(num_elements * 0.15)
 
         if replace_num > 0:
             replace_indices = torch.randperm(num_elements)[:replace_num]
-            labels[replace_indices] = mask_token
+            labels_ids[replace_indices] = mask_token
         
-        feature['input_ids'] = torch.cat([input_ids, labels])
+        feature['input_ids'] = torch.cat([input_ids, labels_ids])
         feature['labels'] = labels
         feature['attention_mask'] = torch.ones_like(feature['input_ids'], dtype=torch.long)
 

@@ -3647,19 +3647,20 @@ class Trainer:
 
         labels_len = labels.shape[1]
         labels_ids = input_ids[:, -labels_len:]
-        laebls_logits = lm_logits[:, -labels_len:]
+        labels_logits = lm_logits[:, -labels_len:]
 
         mask = labels_ids == self.processing_class.mask_token_id
-        laebls_logits = laebls_logits[mask]
+        labels_logits = labels_logits[mask]
         labels = labels[mask]
 
         repeat_counts = mask.sum(dim=1)
         new_scores = torch.repeat_interleave(score, repeat_counts)
 
-        loss = self.ce_loss(laebls_logits, labels) * new_scores
+        loss = self.ce_loss(labels_logits, labels) * new_scores
         loss1 = loss.mean()
         loss2 = torch.zeros_like(loss1)
         loss = loss1 + loss2
+        loss1 = loss1 * 1e4
         return ((loss, loss1, loss2), dict(logits=lm_logits)) if return_outputs else (loss, loss1, loss2)
 
 
