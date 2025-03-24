@@ -16,6 +16,7 @@ from implementation import sample_iterator
 from implementation import evaluate_function
 from implementation import evaluator
 import math
+import copy
 
 
 
@@ -112,15 +113,16 @@ def get_sampler(prompt):
 
 
 def generate(model, input_ids, attention_mask, tokenizer):
+    temperature = 0.1
     with torch.no_grad():
         outputs = model(input_ids=input_ids, attention_mask=attention_mask)
-        lm_logits = outputs.logits
+        lm_logits = outputs.logits / temperature
         mask = input_ids == tokenizer.mask_token_id
         labels_logits = lm_logits[mask]
         probs = torch.softmax(labels_logits, dim=-1)
         indices = torch.multinomial(probs, num_samples=1)
         indices = indices.tolist()
-        return indices
+    return indices
 
 
 
@@ -167,7 +169,8 @@ def main():
         gen_i = 0
 
         code_list = []
-        for (prompt, decisions), ids_mask, ids_ori in zip(prompts, batch_labels_ids, batch_labels):
+        for (prompt, decisions_ori), ids_mask, ids_ori in zip(prompts, batch_labels_ids, batch_labels):
+            decisions = copy.deepcopy(decisions_ori)
             assert len(ids_mask) == len(ids_ori)
             for idx, (id_mask, id_ori) in enumerate(zip(ids_mask, ids_ori)):
                 if id_mask == tokenizer.mask_token_id:
