@@ -3645,13 +3645,13 @@ class Trainer:
         outputs = model(input_ids=input_ids, attention_mask=attention_mask)
         lm_logits = outputs.logits
 
-        labels_len = labels.shape[1]
-        labels_ids = input_ids[:, -labels_len:]
-        labels_logits = lm_logits[:, -labels_len:]
+        # labels_len = labels.shape[1]
+        # labels_ids = input_ids[:, -labels_len:]
+        # labels_logits = lm_logits[:, -labels_len:]
 
-        mask = labels_ids == self.processing_class.mask_token_id
-        labels_logits = labels_logits[mask]
-        labels = labels[mask]
+        mask = input_ids == self.processing_class.mask_token_id
+        labels_logits = lm_logits[mask]
+        # labels = labels[mask]
 
         repeat_counts = mask.sum(dim=1)
         new_scores = torch.repeat_interleave(score, repeat_counts)

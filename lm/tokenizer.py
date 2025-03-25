@@ -99,10 +99,6 @@ class Tokenizer():
     def batch_encode(self, function_list, padding):
         if len(function_list) == 0:
             raise Exception('todo')
-        elif len(function_list) == 1:
-            raise Exception('todo')
-            # ids, mask = tokenizer_encode_inner(self.vocab, self._pad_token_id, self._cls_token_id, self._sep_token_id, model_max_length, sentence_list[0], None)
-            # return dict(input_ids=[ids], attention_mask=[mask])
         else:
             max_workers=min(os.cpu_count(), 64)
             if self.executor is None:
@@ -123,7 +119,7 @@ class Tokenizer():
     
 
     def decode(self, ids, add_special_tokens=True):
-        return tokenizer_decode_inner(self._id_to_token, ids, add_special_tokens, self.special_tokens)
+        return tokenizer_decode_inner(self.id_to_token, ids, add_special_tokens, self.special_tokens)
     
 
     # def batch_decode(self, input_ids, add_special_tokens=True):

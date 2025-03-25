@@ -52,6 +52,7 @@ MODEL_TYPES = tuple(conf.model_type for conf in MODEL_CONFIG_CLASSES)
 def ddd_data_collator(features):
     mask_token = 3
 
+    labels_list = []
     for feature in features:
         input_ids = torch.tensor(feature['input_ids'], dtype=torch.long)
         labels = torch.tensor(feature['labels'], dtype=torch.long)
@@ -60,25 +61,26 @@ def ddd_data_collator(features):
         num_elements = len(labels_ids)
         replace_num = math.ceil(num_elements * 0.15)
 
-        if replace_num > 0:
-            replace_indices = torch.randperm(num_elements)[:replace_num]
-            labels_ids[replace_indices] = mask_token
+        replace_indices = torch.randperm(num_elements)[:replace_num]
+        labels_ids[replace_indices] = mask_token
         
         feature['input_ids'] = torch.cat([input_ids, labels_ids])
-        feature['labels'] = labels
+        # feature['labels'] = labels
+        labels_list.append(labels[replace_indices])
         feature['attention_mask'] = torch.ones_like(feature['input_ids'], dtype=torch.long)
 
     def pad_tensor(key, pad_value=0):
         tensors = [f[key] for f in features]
-        max_len = max(len(seq) for seq in tensors)
-        tensors = [F.pad(seq, (max_len - len(seq), 0), value=pad_value) for seq in tensors]
+        max_len = 1920
+        tensors = [F.pad(seq, (0, max_len - len(seq)), value=pad_value) for seq in tensors]
         tensors = torch.stack(tensors)
         return tensors
     
     batch = {
         "input_ids": pad_tensor("input_ids", pad_value=0),
         "attention_mask": pad_tensor("attention_mask", pad_value=0),
-        "labels": pad_tensor("labels", pad_value=-100),
+        # "labels": pad_tensor("labels", pad_value=-100),
+        "labels": torch.cat(labels_list),
         "score": torch.tensor([f["score"] for f in features], dtype=torch.float)
     }
     
@@ -364,9 +366,9 @@ def main():
             pad_token_id=tokenizer.pad_token_id,
             # sep_token_id=tokenizer.sep_token_id,
             # unk_token_id=tokenizer.unk_token_id,
-            n_embd=256,
-            n_head=4,
-            n_layer=4,
+            n_embd=512,
+            n_head=8,
+            n_layer=8,
             # attn_pdrop=0.1,
             # embd_pdrop=0.1,
             # resid_pdrop=0.1,

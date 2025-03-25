@@ -36,7 +36,7 @@ def get_model():
     #     # "temperature": 0,
     # }
 
-    model: GPT2LMHeadModel = AutoModelForCausalLM.from_pretrained('output/checkpoint-22000')
+    model: GPT2LMHeadModel = AutoModelForCausalLM.from_pretrained('output2/checkpoint-1000')
     model.to(device)
     return tokenizer, model, device
 
@@ -82,8 +82,8 @@ def get_data():
 
 
 def pad_tensor(tensors, pad_value, device):
-    max_len = max(len(seq) for seq in tensors)
-    tensors = [F.pad(seq, (max_len - len(seq), 0), value=pad_value) for seq in tensors]
+    max_len = 1920
+    tensors = [F.pad(seq, (0, max_len - len(seq)), value=pad_value) for seq in tensors]
     tensors = torch.stack(tensors)
     tensors = tensors.to(device)
     return tensors
