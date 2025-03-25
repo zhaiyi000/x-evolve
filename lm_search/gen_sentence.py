@@ -22,7 +22,7 @@ import copy
 
 def get_model():
     tokenizer = Tokenizer.from_pretrained('tokenizer')
-    device = 0
+    device = 1
 
     # gen_kwargs = {
     #     "min_length": -1,
@@ -190,11 +190,11 @@ def main():
         assert gen_i == len(indices_gen)
         print()
 
-        result_list = evaluate(code_list)
-        this_score_list = [x[0] for x in result_list if x[1]]
-        print('this max score:', max(this_score_list), 'global score:', max_score)
-        if max(this_score_list) > max_score:
-            max_score = max(this_score_list)
+        # result_list = evaluate(code_list)
+        # this_score_list = [x[0] for x in result_list if x[1]]
+        # print('this max score:', max(this_score_list), 'global score:', max_score)
+        # if max(this_score_list) > max_score:
+        #     max_score = max(this_score_list)
 
         print()
 
