@@ -87,10 +87,10 @@ def calculate_score(score_list: list, visit_list: list, length_list: list):
     # index = np.argmax(scores)
     # scores[index] = 1 - sum(scores[0:index]) - sum(scores[index+1:])
 
-    min_weight = min(weights)
-    indices = np.random.choice(len(weights), len(weights)//2, replace=False)
-    for idx in indices:
-        weights[idx] = min_weight
+    # min_weight = min(weights)
+    # indices = np.random.choice(len(weights), len(weights)//2, replace=False)
+    # for idx in indices:
+    #     weights[idx] = min_weight
 
     scores = sample_iterator.softmax(weights, temperature)
     return scores

@@ -31,8 +31,9 @@ from transformers.trainer_utils import get_last_checkpoint
 from transformers.utils import check_min_version, send_example_telemetry
 from transformers.utils.versions import require_version
 import numpy as np
-from trl import AutoModelForCausalLMWithValueHead
-from ddd_model import GPT2WithRegression
+import torch.nn.functional as F
+# from trl import AutoModelForCausalLMWithValueHead
+# from ddd_model import GPT2WithRegression
 os.environ["WANDB_DISABLED"] = "true"
 
 
@@ -48,48 +49,41 @@ MODEL_CONFIG_CLASSES = list(MODEL_FOR_CAUSAL_LM_MAPPING.keys())
 MODEL_TYPES = tuple(conf.model_type for conf in MODEL_CONFIG_CLASSES)
 
 
-def ddd_data_collator(features, return_tensors="pt"):
-    if 'rewards_idx' in features[0]:
-        batch_rewards_index = [x.pop('rewards_idx') for x in features]
-        batch_rewards_index_result = []
-        batch_rewards_segment = []
+def ddd_data_collator(features):
+    mask_token = 3
 
-        for batch_i, rewards in enumerate(batch_rewards_index):
-            for reward_i, reward_list in enumerate(rewards):
-                batch_rewards_index_result.extend(reward_list)
-                batch_rewards_segment.append(len(reward_list))
+    labels_list = []
+    for feature in features:
+        input_ids = torch.tensor(feature['input_ids'], dtype=torch.long)
+        labels = torch.tensor(feature['labels'], dtype=torch.long)
+        labels_ids = labels.clone()
 
+        num_elements = len(labels_ids)
+        replace_num = math.ceil(num_elements * 0.15)
 
-        batch_rewards_value = [x.pop('rewards_value') for x in features]
-        batch_rewards_value_result = []
-
-        for batch_i, rewards in enumerate(batch_rewards_value):
-            for reward_i, reward_list in enumerate(rewards):
-                batch_rewards_value_result.extend(reward_list)
-
+        replace_indices = torch.randperm(num_elements)[:replace_num]
+        labels_ids[replace_indices] = mask_token
         
-        batch_visit_weight = [x.pop('visit_weight') for x in features]
-        batch_visit_weight_result = []
+        feature['input_ids'] = torch.cat([input_ids, labels_ids])
+        # feature['labels'] = labels
+        labels_list.append(labels[replace_indices])
+        feature['attention_mask'] = torch.ones_like(feature['input_ids'], dtype=torch.long)
 
-        for batch_i, visit_weight in enumerate(batch_visit_weight):
-            batch_visit_weight_result.extend(visit_weight)
-
-
-        if return_tensors == 'pt':
-            rewards_index = torch.tensor(batch_rewards_index_result, dtype=torch.int32)
-            rewards_segment = torch.tensor(batch_rewards_segment, dtype=torch.int32)
-            rewards_value = torch.tensor(batch_rewards_value_result, dtype=torch.float32)
-            visit_weight = torch.tensor(batch_visit_weight_result, dtype=torch.float32)
-        else:
-            raise Exception('todo')
-
+    def pad_tensor(key, pad_value=0):
+        tensors = [f[key] for f in features]
+        max_len = 1920
+        tensors = [F.pad(seq, (0, max_len - len(seq)), value=pad_value) for seq in tensors]
+        tensors = torch.stack(tensors)
+        return tensors
     
-    batch = default_data_collator(features, return_tensors=return_tensors)
-    if 'rewards_idx' in features[0]:
-        batch['rewards_index'] = rewards_index
-        batch['rewards_segment'] = rewards_segment
-        batch['rewards_value'] = rewards_value
-        batch['visit_weight'] = visit_weight
+    batch = {
+        "input_ids": pad_tensor("input_ids", pad_value=0),
+        "attention_mask": pad_tensor("attention_mask", pad_value=0),
+        # "labels": pad_tensor("labels", pad_value=-100),
+        "labels": torch.cat(labels_list),
+        "score": torch.tensor([f["score"] for f in features], dtype=torch.float)
+    }
+    
     return batch
 
 
@@ -372,9 +366,9 @@ def main():
             pad_token_id=tokenizer.pad_token_id,
             # sep_token_id=tokenizer.sep_token_id,
             # unk_token_id=tokenizer.unk_token_id,
-            n_embd=256,
-            n_head=4,
-            n_layer=4,
+            n_embd=512,
+            n_head=8,
+            n_layer=8,
             # attn_pdrop=0.1,
             # embd_pdrop=0.1,
             # resid_pdrop=0.1,
@@ -392,10 +386,7 @@ def main():
         #     if model_args.torch_dtype in ["auto", None]
         #     else getattr(torch, model_args.torch_dtype)
         # )
-        if model_args.trainer_class == 'trainer':
-            model = GPT2WithRegression.from_pretrained(model_args.model_name_or_path)
-        else:
-            model = AutoModelForCausalLM.from_pretrained(
+        model = AutoModelForCausalLM.from_pretrained(
                 model_args.model_name_or_path,
                 # from_tf=bool(".ckpt" in model_args.model_name_or_path),
                 # config=config,
@@ -406,11 +397,7 @@ def main():
                 # low_cpu_mem_usage=model_args.low_cpu_mem_usage,
             )
     else:
-        if model_args.trainer_class == 'trainer':
-            # model = AutoModelForCausalLMWithValueHead.from_pretrained(model)
-            model = GPT2WithRegression(config)
-        else:
-            model = AutoModelForCausalLM.from_config(config)
+        model = AutoModelForCausalLM.from_config(config)
 
         n_params = sum({p.data_ptr(): p.numel() for p in model.parameters()}.values())
         logger.info(f"Training new model from scratch - Total size={n_params/2**20:.2f}M params")

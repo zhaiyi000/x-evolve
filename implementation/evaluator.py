@@ -84,8 +84,7 @@ def _trim_function_body(generated_code: str) -> str:
 
 
 def _sample_to_program(
-        sample: sample_iterator.SampleIterator,
-        indices: list[int],
+        generated_code: str,
         # version_generated: int | None,
         template: code_manipulation.Program,
         function_to_evolve: str,
@@ -93,25 +92,10 @@ def _sample_to_program(
     """Returns the compiled generated function and the full runnable program.
     RZ: This function removes the code after the generated function body.
     """
-    generated_code = sample.get_instance(indices)
-    body = _trim_function_body(generated_code)
-    # if version_generated is not None:
-    #     body = code_manipulation.rename_function_calls(
-    #         code=body,
-    #         source_name=f'{function_to_evolve}_v{version_generated}',
-    #         target_name=function_to_evolve
-    #     )
-
+    # body = _trim_function_body(generated_code)
     program = copy.deepcopy(template)
     evolved_function = program.get_function(function_to_evolve)
-    evolved_function.body = body
-
-    # generated_code = sample.get_template()
-    # body = _trim_function_body(generated_code)
-    # register = copy.deepcopy(template)
-    # register_function = register.get_function(function_to_evolve)
-    # register_function.body = body
-
+    evolved_function.body = generated_code
     return evolved_function, str(program)
 
 
@@ -174,7 +158,7 @@ class Evaluator:
 
     def analyse(
             self,
-            sample_list: list[sample_iterator.SampleIterator],
+            tune_sampler: sample_iterator.SampleIterator,
             indices_list: list[int],
             # version_generated: int | None,
             # **kwargs  # RZ: add this to do profile
@@ -192,14 +176,20 @@ class Evaluator:
         new_function_list = []
         program_list = []
         scores_per_test_list = []
+        sample_template = tune_sampler.get_template()
+        sample_template, _ = _sample_to_program(
+                sample_template, self._template, self._function_to_evolve)
+        decisions_list = []
 
-        for sample, indices in zip(sample_list, indices_list):
+        for indices in indices_list:
+            generated_code, decisions = tune_sampler.get_instance(indices)
             new_function, program = _sample_to_program(
-                sample, indices, self._template, self._function_to_evolve)
+                generated_code, self._template, self._function_to_evolve)
             scores_per_test = {}
 
             new_function_list.append(new_function)
             program_list.append(program)
+            decisions_list.append(decisions)
             scores_per_test_list.append(scores_per_test)
 
         time_reset = time.time()
@@ -232,4 +222,4 @@ class Evaluator:
         # If 'score_per_test' is empty, we record it to the profiler at once.
         # if scores_per_test:
         
-        return new_function_list, evaluate_time, score_list
+        return sample_template, evaluate_time, score_list, decisions_list

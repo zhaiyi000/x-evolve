@@ -757,6 +757,7 @@ class Trainer:
         self.is_fsdp_xla_v1_enabled = self.is_fsdp_xla_enabled and not self.is_fsdp_xla_v2_enabled
 
         self.mse_loss = nn.MSELoss()
+        self.ce_loss = nn.CrossEntropyLoss(reduction='none')
 
     @property
     def tokenizer(self) -> Optional[PreTrainedTokenizerBase]:
@@ -3636,23 +3637,32 @@ class Trainer:
 
         Subclass and override for custom behavior.
         """
-        rewards = inputs.pop('rewards')
-        # inputs.pop('labels')
+        input_ids = inputs['input_ids']
         attention_mask = inputs['attention_mask']
-        outputs = model(**inputs)
-        lm_logits, value = outputs
+        labels = inputs['labels']
+        score = inputs['score']
 
-        attention_mask = attention_mask.float()
-        masked_value = value * attention_mask
-        masked_sum = masked_value.sum(dim=-1)
-        mask_sum = attention_mask.sum(dim=-1).clamp(min=1e-7)
-        mean_value = masked_sum / mask_sum
+        outputs = model(input_ids=input_ids, attention_mask=attention_mask)
+        lm_logits = outputs.logits
 
-        loss2 = self.mse_loss(mean_value, rewards)
-        loss1 = torch.zeros_like(loss2)
+        # labels_len = labels.shape[1]
+        # labels_ids = input_ids[:, -labels_len:]
+        # labels_logits = lm_logits[:, -labels_len:]
 
+        mask = input_ids == self.processing_class.mask_token_id
+        labels_logits = lm_logits[mask]
+        # labels = labels[mask]
+
+        repeat_counts = mask.sum(dim=1)
+        new_scores = torch.repeat_interleave(score, repeat_counts)
+
+        loss = self.ce_loss(labels_logits, labels) * new_scores
+        loss1 = loss.mean()
+        loss2 = torch.zeros_like(loss1)
         loss = loss1 + loss2
+        loss1 = loss1 * 1e4
         return ((loss, loss1, loss2), dict(logits=lm_logits)) if return_outputs else (loss, loss1, loss2)
+
 
     def is_local_process_zero(self) -> bool:
         """

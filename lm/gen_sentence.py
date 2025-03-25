@@ -1,251 +1,209 @@
-import torch
-from transformers import AutoModelForCausalLM
-from tokenizer import Tokenizer
+import glob
+import natsort
 import json
-from multiprocessing import Queue, Process
-import time
-import random
-
-
-import logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.FileHandler('sh_and_log/gen_sentence.log'),
-        logging.StreamHandler()
-    ]
-)
-
-
-def exec_code(code_template, text):
-    text = text.replace('\t', '    ')
-    codes = code_template.replace('__placeholder__', text)
-
-    with open('test_bin_packing.py', 'w') as f:
-        f.write(codes)
-
-    try:
-        scope = {}
-        exec(codes, scope)
-        score = scope['result']
-        return score
-    except:
-        return None
-
-
-def write_records(text, score):
-    text = text.replace('    ', '\t')
-    with open('records.json', 'a') as f:
-        json.dump(dict(text=text, score=score), f)
-        f.write('\n')
-
-
-def check_end(ids, tokenizer):
-    token_id = ids[-1]
-    if token_id == tokenizer.sep_token_id or \
-        token_id == tokenizer.pad_token_id or \
-        len(ids) == tokenizer.model_max_length:
-        return True
-    else:
-        return False
-
-
-def valid_worker(valid_model, input_ids, attention_mask):
-    with torch.no_grad():
-        valid_outputs = valid_model(input_ids=input_ids, attention_mask=attention_mask)
-        valid_logits = valid_outputs.logits[:, -1]
-        torch.sigmoid_(valid_logits)
-        mask = valid_logits > 0.5
-        res_list = [torch.where(row_mask)[0] for row_mask in mask]
-        return res_list
-
-
-def prob_worker(prob_model, input_ids, attention_mask, temperature):
-    with torch.no_grad():
-        prob_outputs = prob_model(input_ids=input_ids, attention_mask=attention_mask)
-        logits = prob_outputs.logits[:, -1]
-        probs = torch.softmax(logits/temperature, dim=-1)
-        res_list = []
-        for i in range(input_ids.shape[0]):
-            res_list.append(probs[i])
-        return res_list
-
-
-def exec_worker(exec_queue, exec_res_queue, tokenizer, code_template, text_score_dic, err_que):
-    try:
-        import os
-        logging.info(f"exec_worker PID: {os.getpid()}")
-        exec_res = []
-        while True:
-            input_ids = exec_queue.get()
-            if input_ids == 'end':
-                exec_res_queue.put(exec_res)
-                exec_res = []
-                time.sleep(0)
-            else:
-                text = tokenizer.decode(input_ids, add_special_tokens=False)
-                if text in text_score_dic:
-                    logging.info(f'repeat {text_score_dic[text]}')
-                    exec_res.append(text_score_dic[text])
-                else:
-                    score = exec_code(code_template, text)
-                    text_score_dic[text] = score
-                    if score:
-                        write_records(text, score)
-                    else:
-                        logging.info('invalid')
-                    exec_res.append(score)
-    except Exception as err:
-        logging.info(str(err))
-        import traceback
-        traceback.print_exc()
-        err_que.put(err)
-        raise err
+import re
+import numpy as np
+from tokenizer import Tokenizer
+from transformers import AutoModelForCausalLM
+import torch
+import torch.nn.functional as F
+from transformers import GPT2LMHeadModel
+from funsearch_bin_packing_llm_api import Sandbox, specification
+import bin_packing_utils
+from typing import Dict
+from implementation import code_manipulation
+from implementation import sample_iterator
+from implementation import evaluate_function
+from implementation import evaluator
+import math
+import copy
 
 
 
-def get_next_token(input_ids_ori, num_samples, try_size, batch_size, tokenizer, exec_queue, exec_res_queue, valid_model, device, prob_model, temperature):
-    
-    input_ids_list = [input_ids_ori] * try_size
-    first_token_list = []
+def get_model():
+    tokenizer = Tokenizer.from_pretrained('tokenizer')
+    device = 0
 
-    while len(input_ids_list) != 0:
-        input_ids_batch, input_ids_list = input_ids_list[-batch_size:], input_ids_list[:-batch_size]
+    # gen_kwargs = {
+    #     "min_length": -1,
+    #     "max_length": 1e4,
+    #     "top_k": 0,
+    #     "top_p": 1,
+    #     "num_return_sequences": 1,
+    #     "do_sample": True,
+    #     "pad_token_id": tokenizer.pad_token_id,
+    #     "eos_token_id": tokenizer.sep_token_id,
+    #     # "temperature": 0,
+    # }
 
-        max_length = max([len(x) for x in input_ids_batch])
-        attention_mask = [[1] * len(x) + [0] * (max_length - len(x)) for x in input_ids_batch]
-        input_ids = [x + [tokenizer.pad_token_id] * (max_length - len(x)) for x in input_ids_batch]
-        print(max_length, end='       \r')
+    model: GPT2LMHeadModel = AutoModelForCausalLM.from_pretrained('output2/checkpoint-1000')
+    model.to(device)
+    return tokenizer, model, device
 
-        input_ids_tensor = torch.tensor(input_ids, dtype=torch.int64, device=device)
-        attention_mask_tensor = torch.tensor(attention_mask, dtype=torch.int64, device=device)
-        
-        valid_indices_batch = valid_worker(valid_model, input_ids_tensor, attention_mask_tensor)
-        probs_batch = prob_worker(prob_model, input_ids_tensor, attention_mask_tensor, temperature)
 
-        single_indices_mask = [idx.shape[-1] == 1 for idx in valid_indices_batch]
-        single_indices_list = []
-        if any(single_indices_mask):
-            single_indices = torch.cat([idx for idx, mask in zip(valid_indices_batch, single_indices_mask) if mask], dim=0)
-            single_indices_list = single_indices.tolist()
-        single_idx = 0
 
-        new_input_ids_list = []
-        for valid_indices, probs, input_ids in zip(valid_indices_batch, probs_batch, input_ids_batch):
+def get_data():
+    files = []
+    files.extend(glob.glob('../zy1/funsearch_llm_api/samples/*.json'))
+    files.extend(glob.glob('../zy2/funsearch_llm_api/samples/*.json'))
+    files = natsort.natsorted(files)
 
-            if valid_indices.shape[-1] == 0:
-                continue
-            elif valid_indices.shape[-1] == 1:
-                # sampled_token = valid_indices.item()
-                sampled_token = single_indices_list[single_idx]
-                single_idx += 1
-                new_input_ids_list.extend([input_ids + [sampled_token]])
-            else:
-                probs = probs[valid_indices]
-                sampled_indices = torch.multinomial(probs, num_samples=num_samples, replacement=True)
-                sampled_indices = valid_indices[sampled_indices.unique()]
-                sampled_indices = sampled_indices.tolist()
-                new_input_ids_list.extend([input_ids + [sampled_token] for sampled_token in sampled_indices])
-        
-        for input_ids in new_input_ids_list:
-            if check_end(input_ids, tokenizer):
-                first_token_list.append(input_ids)
-                exec_queue.put(input_ids)
-            else:
-                input_ids_list.append(input_ids)
+    score_list = []
+    visit_list = []
+    length_list = []
+    function_list = []
+    max_score = -1e10
+    visited_decisions: dict[str, set[tuple[str]]] = {}
 
-    exec_queue.put('end')
-    scores = exec_res_queue.get()
+    for file in files:
+        with open(file, 'r') as f:
+            info = json.load(f)
+        sample_order = info['sample_order']
+        function = info['function']
+        score = info['score']
+        decisions = info['decisions']
 
-    max_score = float('-inf')
-    res_first_token = []
-    for score, first_token in zip(scores, first_token_list):
+        if function not in visited_decisions:
+            visited_decisions[function] = set()
+        visited_decisions[function].add(tuple(decisions))
+
         if score:
-            if score > max_score:
-                max_score = score
-                res_first_token = [first_token]
-            elif score == max_score:
-                res_first_token.append(first_token)
+            max_score = max(max_score, score)
+
+            score_list.append(score)
+            visit_list.append(0)
+            length_list.append(len(function))
+            function_list.append((function, decisions))
+
+    print('len function_dic', len(function_list))
     
-    if len(res_first_token) == 0:
-        return None, None
-    else:
-        return random.choice(res_first_token), max_score
+    return score_list, visit_list, length_list, function_list, max_score, visited_decisions
+
+
+
+def pad_tensor(tensors, pad_value, device):
+    max_len = 1920
+    tensors = [F.pad(seq, (0, max_len - len(seq)), value=pad_value) for seq in tensors]
+    tensors = torch.stack(tensors)
+    tensors = tensors.to(device)
+    return tensors
+
+
+exector = Sandbox()
+template = code_manipulation.text_to_program(specification)
+function_to_evolve = 'priority'
+function_to_run = 'evaluate'
+bin_packing_or3 = {'OR3': bin_packing_utils.datasets['OR3']}
+def evaluate(code_list):
+    program_list = []
+    for generated_code in code_list:
+        new_function, program = evaluator._sample_to_program(generated_code, template, function_to_evolve)
+        program_list.append(program)
+    result_list = exector.run(program_list, function_to_run=function_to_run, function_to_evolve=function_to_evolve, inputs=bin_packing_or3, test_input='OR3', timeout_seconds=30)
+    return result_list
+
+
+
+prompt_sampler_dic: Dict[str, sample_iterator.SampleIterator] = {}
+def get_sampler(prompt):
+    if prompt not in prompt_sampler_dic:
+        sampler = sample_iterator.SampleIterator(prompt)
+        prompt_sampler_dic[prompt] = sampler
+    return prompt_sampler_dic[prompt]
+
+
+def generate(model, input_ids, attention_mask, tokenizer):
+    temperature = 0.1
+    with torch.no_grad():
+        outputs = model(input_ids=input_ids, attention_mask=attention_mask)
+        lm_logits = outputs.logits / temperature
+        mask = input_ids == tokenizer.mask_token_id
+        labels_logits = lm_logits[mask]
+        probs = torch.softmax(labels_logits, dim=-1)
+        indices = torch.multinomial(probs, num_samples=1)
+        indices = indices.tolist()
+    return indices
 
 
 
 def main():
+    tokenizer, model, device = get_model()
+    model.eval()
+    score_list, visit_list, length_list, function_list, max_score, visited_decisions = get_data()
 
-    try_size = 16
-    batch_size = 16
-    temperature = 1
-    num_samples = 1
-    device = 2
-    valid_path = 'clm_mcts_valid/checkpoint-258000'
-    prob_path = 'clm_mcts/checkpoint-20000'
-    tokenizer = Tokenizer.from_pretrained(valid_path)
+    while True:
+        prob = evaluate_function.calculate_score(score_list, visit_list, length_list)
+        indices = np.random.choice(len(function_list), size=64, replace=True, p=prob)
+        prompts = [function_list[idx] for idx in indices]
+        features = tokenizer(prompts)
 
+        batch_input_ids = []
+        batch_attention_mask = []
+        batch_labels = []
+        batch_labels_ids = []
 
-    valid_model = AutoModelForCausalLM.from_pretrained(valid_path).to(device)
-    valid_model.eval()
+        for input_ids, labels in features:
+            input_ids = torch.tensor(input_ids, dtype=torch.long)
+            labels = torch.tensor(labels, dtype=torch.long)
+            labels_ids = labels.clone()
 
-    prob_model = AutoModelForCausalLM.from_pretrained(prob_path).to(device)
-    prob_model.eval()
+            num_elements = len(labels_ids)
+            replace_num = math.ceil(num_elements * 0.15)
 
-
-    text_score_dic = {}
-    with open('json/body.json', 'r') as f:
-        lines = f.read().strip().split('\n')
-        for line in lines:
-            json_line = json.loads(line)
-            text_score_dic[json_line['text']] = json_line['score']
-    logging.info(f'len text_score_dic {len(text_score_dic)}')
-
-    with open('bin_packing_template.py', 'r') as f:
-        code_template = f.read()
-
-    exec_queue = Queue()
-    exec_res_queue = Queue()
-    err_que = Queue()
-
-    exec_process = Process(target=exec_worker, args=(exec_queue, exec_res_queue, tokenizer, code_template, text_score_dic, err_que))
-    exec_process.daemon = True
-    exec_process.start()
-
-    input_ids_cpu = [1]
-    outer_max_score = float('-inf')
-    outer_input_ids = []
-
-    while True:   
-        sampled_input_ids, max_score = get_next_token(input_ids_cpu, num_samples, try_size, batch_size, tokenizer, exec_queue, exec_res_queue, valid_model, device, prob_model, temperature)
-        if sampled_input_ids is None:
-            logging.info('no valid token')
-            if len(input_ids_cpu) > 1:
-                input_ids_cpu.pop()
-            continue
-
-        if max_score > outer_max_score:
-            outer_max_score = max_score
-            outer_input_ids = sampled_input_ids
-            logging.info(f'new outer max socre {max_score} {outer_max_score}')
-        elif max_score == outer_max_score:
-            logging.info(f'equal outer max socre {max_score} {outer_max_score}')
-            outer_input_ids = random.choice([outer_input_ids, sampled_input_ids])
-        else:
-            logging.info(f'old outer max socre {max_score} {outer_max_score}')
-
-        input_ids_cpu.append(outer_input_ids[len(input_ids_cpu)])
-        logging.info(str(input_ids_cpu))
-        if check_end(input_ids_cpu, tokenizer):
-            input_ids_cpu = [1]
-            outer_max_score = float('-inf')
-            outer_input_ids = []
-            logging.info('finish_one')
-           
+            if replace_num > 0:
+                replace_indices = torch.randperm(num_elements)[:replace_num]
+                labels_ids[replace_indices] = tokenizer.mask_token_id
             
-if __name__ == '__main__':
-    import os
-    logging.info(f"主进程 PID: {os.getpid()}")
-    main()
+            input_ids = torch.cat([input_ids, labels_ids])
+            batch_input_ids.append(input_ids)
+            batch_labels.append(labels)
+            batch_labels_ids.append(labels_ids)
+            batch_attention_mask.append(torch.ones_like(input_ids, dtype=torch.long))
+        
+        batch_input_ids = pad_tensor(batch_input_ids, pad_value=0, device=device)
+        batch_attention_mask = pad_tensor(batch_attention_mask, pad_value=0, device=device)
+        # batch_labels = pad_tensor(batch_labels, pad_value=-100, device=device)
+        # batch_labels_ids_pad = pad_tensor(batch_labels_ids, pad_value=-100, device=device)
 
+        indices_gen = generate(model, batch_input_ids, batch_attention_mask, tokenizer)
+        gen_i = 0
+
+        code_list = []
+        for (prompt, decisions_ori), ids_mask, ids_ori in zip(prompts, batch_labels_ids, batch_labels):
+            decisions = copy.deepcopy(decisions_ori)
+            assert len(ids_mask) == len(ids_ori)
+            for idx, (id_mask, id_ori) in enumerate(zip(ids_mask, ids_ori)):
+                if id_mask == tokenizer.mask_token_id:
+                    gen_ids = indices_gen[gen_i]
+                    gen_i += 1
+                    token = tokenizer.id_to_token(gen_ids[0])
+                    decisions[idx] = token
+
+            sampler = get_sampler(prompt)
+            decisions = tuple(decisions)
+            if decisions in visited_decisions[prompt]:
+                print('r', end='')
+                continue
+            visited_decisions[prompt].add(decisions)
+            generated_code = sampler.get_instance_by_decisions(decisions)
+            code_list.append(generated_code)
+        assert gen_i == len(indices_gen)
+        print()
+
+        result_list = evaluate(code_list)
+        this_score_list = [x[0] for x in result_list if x[1]]
+        print('this max score:', max(this_score_list), 'global score:', max_score)
+        if max(this_score_list) > max_score:
+            max_score = max(this_score_list)
+
+        print()
+
+
+
+
+    
+
+
+
+if __name__ == '__main__':
+    main()

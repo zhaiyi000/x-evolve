@@ -21,6 +21,7 @@ import time
 from concurrent.futures import ProcessPoolExecutor
 import re
 import gc
+import os
 
 
 def _trim_preface_of_body(sample: str) -> str:
@@ -118,7 +119,13 @@ def request(llm_ins: sample_llm_api.LLM, prompt: str):
                 print(f'specific provider: {llm_ins.provider}, actual provicer: {data["provider"]}')
                 raise Exception('not the specific privoder')
             
-            return data['choices'][0]['message']['content']
+            response_content = data['choices'][0]['message']['content']
+            print('-----------------------')
+            print(prompt)
+            print('-----------------------')
+            print(response_content)
+            print('-----------------------')
+            return response_content
         except Exception as e:
             print(f'errr111__{retry_i}')
             print(e)
@@ -257,7 +264,7 @@ class Sandbox(evaluator.Sandbox):
         for future in futures:
             result = future.result()
             result_list.append(result)
-        del futures,executor
+        del futures, executor
         gc.collect()
         # print(f'evaluate tasks done')
         return result_list
@@ -341,7 +348,7 @@ if __name__ == '__main__':
     config = config.Config(samples_per_prompt=1, evaluate_timeout_seconds=30)
 
     bin_packing_or3 = {'OR3': bin_packing_utils.datasets['OR3']}
-    global_max_sample_num = 300  # if it is set to None, funsearch will execute an endless loop
+    global_max_sample_num = 100  # if it is set to None, funsearch will execute an endless loop
     import shutil, os
     log_dir = os.environ.get('LOG_DIR', 'logs')
     if os.path.exists(log_dir):

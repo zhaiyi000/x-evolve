@@ -83,7 +83,8 @@ class Profiler:
         content = {
             'sample_order': sample_order,
             'function': function_str,
-            'score': score
+            'score': score,
+            'decisions': programs.decisions
         }
         path = os.path.join(self._json_dir, f'samples_{sample_order}.json')
         with open(path, 'w') as json_file:
@@ -118,6 +119,7 @@ class Profiler:
             f.write(f'Sample time  : {str(sample_time)}\n')
             f.write(f'Evaluate time: {str(evaluate_time)}\n')
             f.write(f'Sample orders: {str(sample_orders)}\n')
+            f.write(f'Decisions: {str(function.decisions)}\n')
             f.write(f'======================================================\n\n\n')
 
         # update best function
@@ -137,12 +139,13 @@ class Profiler:
             self._tot_evaluate_time += evaluate_time
 
     
-    def register_function_list(self, global_sample_nums_list, new_function_list, sample_time, evaluate_time, score_list):
+    def register_function_list(self, global_sample_nums_list, sample_template, sample_time, evaluate_time, score_list, decisions_list):
         if global_sample_nums_list is None:
-            global_sample_nums_list = [None] * len(new_function_list)
-        for new_function, score, global_sample_nums in zip(new_function_list, score_list, global_sample_nums_list):
-            new_function.global_sample_nums = global_sample_nums
-            new_function.score = score
-            new_function.sample_time = sample_time
-            new_function.evaluate_time = evaluate_time
-            self.register_function(new_function)
+            global_sample_nums_list = [None] * len(score_list)
+        for score, global_sample_nums, decisions in zip(score_list, global_sample_nums_list, decisions_list):
+            sample_template.global_sample_nums = global_sample_nums
+            sample_template.score = score
+            sample_template.sample_time = sample_time
+            sample_template.evaluate_time = evaluate_time
+            sample_template.decisions = decisions
+            self.register_function(sample_template)
