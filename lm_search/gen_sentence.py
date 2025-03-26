@@ -36,7 +36,7 @@ def get_model():
     #     # "temperature": 0,
     # }
 
-    model: GPT2LMHeadModel = AutoModelForCausalLM.from_pretrained('output2/checkpoint-52000')
+    model: GPT2LMHeadModel = AutoModelForCausalLM.from_pretrained('output2/checkpoint-2000')
     model.to(device)
     return tokenizer, model, device
 
@@ -113,7 +113,7 @@ def get_sampler(prompt):
 
 
 def generate(model, input_ids, attention_mask, tokenizer):
-    temperature = 0.1
+    temperature = 1
     with torch.no_grad():
         outputs = model(input_ids=input_ids, attention_mask=attention_mask)
         lm_logits = outputs.logits / temperature
@@ -133,7 +133,7 @@ def main():
 
     while True:
         prob = evaluate_function.calculate_score(score_list, visit_list, length_list)
-        indices = np.random.choice(len(function_list), size=32, replace=True, p=prob)
+        indices = np.random.choice(len(function_list), size=64, replace=True, p=prob)
         prompts = [function_list[idx] for idx in indices]
         features = tokenizer(prompts)
 

@@ -66,7 +66,7 @@ def ddd_data_collator(features):
         
         feature['input_ids'] = torch.cat([input_ids, labels_ids])
         # feature['labels'] = labels
-        labels_list.append(labels[replace_indices])
+        labels_list.append(labels[torch.sort(replace_indices)[0]])
         feature['attention_mask'] = torch.ones_like(feature['input_ids'], dtype=torch.long)
 
     def pad_tensor(key, pad_value=0):
@@ -366,9 +366,9 @@ def main():
             pad_token_id=tokenizer.pad_token_id,
             # sep_token_id=tokenizer.sep_token_id,
             # unk_token_id=tokenizer.unk_token_id,
-            n_embd=512,
-            n_head=8,
-            n_layer=8,
+            n_embd=256,
+            n_head=4,
+            n_layer=4,
             # attn_pdrop=0.1,
             # embd_pdrop=0.1,
             # resid_pdrop=0.1,

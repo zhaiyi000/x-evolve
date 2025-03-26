@@ -6,7 +6,7 @@ CUDA_VISIBLE_DEVICES=2,1,0 torchrun --master-port=9088 --nproc_per_node=3 train_
                                     --tokenizer_name=tokenizer \
                                     --output_dir=output2 \
                                     --dataset_name=dataset \
-                                    --per_device_train_batch_size=32 \
+                                    --per_device_train_batch_size=128 \
                                     \
                                     --overwrite_output_dir=True \
                                     --logging_steps=100 \
