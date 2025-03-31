@@ -3,6 +3,7 @@ import numpy as np
 from implementation import sample_iterator
 import math
 import copy
+from config import log_dir
 byte_key = "Bearer f184bcd9-68b0-49be-8a3f-ea095ee71e14"
 open_key = "Bearer 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"
 byte_http = 'https://ark.cn-beijing.volces.com/api/v3/chat/completions'
@@ -282,7 +283,6 @@ class EvaluateLLM:
         # print('---------------------------------------------')
         res = copy.deepcopy(self._response_score)
         llm_sample_list.append((res, benefit_list_origin, benefit_list, probabilities, index))
-        log_dir = os.environ.get('LOG_DIR', 'logs')
         llm_sample_file = f'{log_dir}/llm_sample.pkl'
         with open(llm_sample_file, 'wb') as f:
             pickle.dump(llm_sample_list, f)

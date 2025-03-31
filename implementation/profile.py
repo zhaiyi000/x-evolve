@@ -47,7 +47,6 @@ class Profiler:
         self._each_sample_evaluate_failed_program_num = []
         self._each_sample_tot_sample_time = []
         self._each_sample_tot_evaluate_time = []
-        log_dir = os.environ.get('LOG_DIR', 'logs')
         self._log_file = f'{log_dir}/profile.log'
         if os.path.exists(self._log_file):
             os.remove(self._log_file)

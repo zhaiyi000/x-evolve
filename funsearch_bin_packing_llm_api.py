@@ -3,13 +3,12 @@ import multiprocessing
 from typing import Collection, Any
 import http.client
 from implementation import funsearch
-from implementation import config
 from implementation import sampler
 from implementation import evaluator_accelerate
 from implementation import evaluator
 from implementation import code_manipulation
 from implementation import sample_llm_api
-import bin_packing_utils
+from bin_packing import bin_packing_utils
 
 import json
 import multiprocessing
@@ -22,7 +21,7 @@ from concurrent.futures import ProcessPoolExecutor, TimeoutError
 import re
 import gc
 import os
-from implementation.config import *
+from config import config_type, log_dir
 
 
 def _trim_preface_of_body(sample: str) -> str:
@@ -330,13 +329,12 @@ def priority(el: tuple[int, ...]) -> float:
 if __name__ == '__main__':
     if config_type == 'bin_packing':
         inputs = {'OR3': bin_packing_utils.datasets['OR3']}
-    elif config_type == 'cat_set':
+    elif config_type == 'cap_set':
         inputs = {'8': 8}
     else:
         raise Exception('wrong case')
     global_max_sample_num = 3000  # if it is set to None, funsearch will execute an endless loop
     import shutil, os
-    log_dir = os.environ.get('LOG_DIR', 'logs')
     if os.path.exists(log_dir):
         # input('delete logs folder?')
         shutil.rmtree(log_dir)
@@ -346,4 +344,6 @@ if __name__ == '__main__':
         inputs=inputs,
         max_sample_nums=global_max_sample_num,
         log_dir=f'{log_dir}/funsearch_llm_api',
+        sandbox_class=Sandbox,
+        llm_class=LLMAPI,
     )

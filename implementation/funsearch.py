@@ -51,6 +51,8 @@ def _extract_function_names(specification: str) -> Tuple[str, str]:
 def main(
         specification: str,
         inputs: Sequence[Any],
+        sandbox_class,
+        llm_class,
         max_sample_nums: int | None,
         **kwargs
 ):
@@ -79,6 +81,7 @@ def main(
         function_to_run,
         inputs,
         timeout_seconds=30,
+        sandbox_class=sandbox_class,
     )
 
     # We send the initial implementation to be analysed by one of the evaluators.
@@ -89,7 +92,7 @@ def main(
     database.register_program(new_function, max(score_list))
 
     # Set global max sample nums.
-    sampler_ins = sampler.Sampler(database, template, function_to_evolve, evaluator_ins, max_sample_nums=max_sample_nums)
+    sampler_ins = sampler.Sampler(database, template, function_to_evolve, evaluator_ins, max_sample_nums=max_sample_nums, llm_class=llm_class)
 
     # This loop can be executed in parallel on remote sampler machines. As each
     # sampler enters an infinite loop, without parallelization only the first

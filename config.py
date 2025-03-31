@@ -1,11 +1,11 @@
 import os
 
 
-if 'funsearch_config_type' not in os.environ:
-    raise Exception('need config type')
+config_type = 'cap_set'
+log_dir = os.environ.get('LOG_DIR', 'logs')
 
 
-config_type = os.environ['funsearch_config_type']
+
 if config_type not in ['bin_packing', 'cap_set']:
     raise Exception('wrong type')
 
@@ -18,6 +18,7 @@ if config_type == 'bin_packing':
 
     sample_iterator_temperature = 1
     sample_iterator_no_update_cnt = 3
+
 elif config_type == 'cap_set':
     evaluate_function_c_l1 = 0.
     evaluate_function_c_1 = 1
@@ -26,5 +27,6 @@ elif config_type == 'cap_set':
 
     sample_iterator_temperature = 100
     sample_iterator_no_update_cnt = 10
+
 else:
     raise Exception('wrong type')
