@@ -31,18 +31,28 @@ def calculate_score(score_list: list, visit_list: list, length_list: list):
     #     pickle.dump(evaluate_function_list, f)
     # 转换初始评分
     
-    if evaluate_function_mask_half:
-        min_weight = min(score_list)
-        indices = np.random.choice(len(score_list), len(score_list)//2, replace=False)
-        for idx in indices:
-            score_list[idx] = min_weight
+    # if evaluate_function_mask_half:
+    #     min_weight = min(score_list)
+    #     indices = np.random.choice(len(score_list), len(score_list)//2, replace=False)
+    #     for idx in indices:
+    #         score_list[idx] = min_weight
 
     s_min = min(score_list)
     s_max = max(score_list)
+    # dump.append(score_list)
+    mask_ratio = 0.6
     if s_max == s_min:
         transformed_initials = np.ones_like(score_list)
     else:
-        transformed_initials = [(s - s_min) / (s_max - s_min) for s in score_list]
+        indices = np.random.choice(len(score_list), math.floor(mask_ratio * len(score_list)), replace=False)
+        for idx in indices:
+            score_list[idx] = s_min
+        s_max = max(score_list)
+        # dump.append(score_list)
+        if s_max == s_min:
+            transformed_initials = np.ones_like(score_list)
+        else:
+            transformed_initials = [(s - s_min) / (s_max - s_min) for s in score_list]
     '''
     C_v1: 超参数C_v1,f(v)的系数部分,初始为0.1
     C_v2: 超参数C_v2,f(v)的指数部分,初始为3
@@ -71,45 +81,6 @@ def calculate_score(score_list: list, visit_list: list, length_list: list):
             weight = score - c_v1 * (visit ** c_v2) * intensity - c_l1 * ((length / len_baseline) ** c_l2) * intensity
         # print(weight)
         weights.append(weight)
-    
-    # 归一化权重为总和1的评分
-    '''
-    total_temp = sum(weights)
-    weights_temp = [w - total_temp for w in weights]
-    total = sum(weights_temp)
-    scores = [w / total for w in weights_temp]
-    index = np.argmax(scores)
-    scores[index] = 1 - sum(scores[0:index]) - sum(scores[index+1:])
-    '''
-    '''
-    weights_temp = []
-    # weight < -10000 的序列不做归一化,我们认为 < -10000已经没有参考价值
-    for w in weights:
-        if w > -10000:
-            weights_temp.append(w)
-    total_temp = sum(weights_temp)
-    weights_convert = [w - total_temp for w in weights_temp]
-    total_convert = sum(weights_convert)
-    scores = [w / total_convert for w in weights_convert]
-    '''
-    '''
-    scores = scipy.special.softmax(weights)
-    index = np.argmax(scores)
-    scores[index] = 1 - sum(scores[0:index]) - sum(scores[index+1:])
-    '''
-    # p: 归一化函数的指数部分
-    # p = 3
-    # total_temp = sum(weights)
-    # weights_temp = [w - total_temp for w in weights]
-    # total = sum([w**p for w in weights_temp])
-    # scores = [w**p / total for w in weights_temp]
-    # index = np.argmax(scores)
-    # scores[index] = 1 - sum(scores[0:index]) - sum(scores[index+1:])
-
-    # min_weight = min(weights)
-    # indices = np.random.choice(len(weights), len(weights)//2, replace=False)
-    # for idx in indices:
-    #     weights[idx] = min_weight
 
     scores = sample_iterator.softmax(weights, temperature)
     return scores

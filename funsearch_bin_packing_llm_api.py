@@ -68,18 +68,12 @@ def _trim_preface_of_body(sample: str) -> str:
 def request(llm_ins: sample_llm_api.LLM, prompt: str):
     for retry_i in range(5):
         try:
-            # print(llm_ins.llm_name, 'request...')
-            llm_ins = sample_llm_api.get_random_model()
-            # print('-----------------------')
-            # print(prompt)
-            # print('-----------------------')
-
             headers = {
                 'Authorization': llm_ins.api_key,
             }
 
             json_data = {
-                'model': llm_ins.model or llm_ins.llm_name,
+                'model': llm_ins.model,
                 'messages': [
                     {
                         "role": "system",

@@ -48,15 +48,15 @@ llm_list = [
         input_price=2.0,
         output_price=8.0, 
     ),
-    # LLM(
-    #     llm_name="Deepseek-R1-distill-qwen-7b",
-    #     api_key=byte_key,
-    #     model="ep-20250305162451-qxgns",
-    #     provider=None,
-    #     request_http = byte_http,
-    #     input_price=0.6,
-    #     output_price=2.4,
-    # ),
+    LLM(
+        llm_name="Deepseek-R1-distill-qwen-7b",
+        api_key=byte_key,
+        model="ep-20250305162451-qxgns",
+        provider=None,
+        request_http = byte_http,
+        input_price=0.6,
+        output_price=2.4,
+    ),
     LLM(
         llm_name="DeepSeek-R1-distill-qwen-32b",
         api_key=byte_key,
@@ -84,16 +84,6 @@ llm_list = [
         input_price=0.15 * rate,
         output_price=0.6 * rate,
     ),
-    # not find core code
-    # LLM(
-    #     llm_name="GPT-o1",
-    #     api_key=open_key,
-    #     model="openai/o1",
-    #     provider="OpenAI",
-    #     request_http = open_http,
-    #     input_price=15 * rate,
-    #     output_price=60 * rate,
-    # ),
     # LLM(
     #     llm_name="GPT-o1-mini",
     #     api_key=open_key,
@@ -212,11 +202,12 @@ class EvaluateLLM:
         self._response_score = [[] for _ in llm_list]
         total_price = sum(llm.input_price + llm.output_price for llm in llm_list)
         self._price_score = [(1-(llm.input_price+llm.output_price)/total_price) for llm in llm_list]
-    
+        # self._maxline = -500
 
     # 每次调用大模型后,将得分记录到大模型的Response_score中
     def call_llm(self, llm: LLM, parent_score: list[float], score: float):
         score = max(-500, score)
+        # self._maxline = max(score, self._maxline)
         self._response_score[self._llm_list.index(llm)].append((parent_score, score))
         
 
@@ -265,22 +256,27 @@ class EvaluateLLM:
                     for par_score, child_score in response_score[-window_size:]:
                         his_num += 1
                         intensity = cal_intensity(child_score)
+                        max_par_score = max(par_score)
                         for par_s in par_score:
-                            benefit += intensity * (child_score - par_s)
-                            # *(decay ** his_num)
+                            # if par_s == self._maxline:
+                            #     if child_score >= par_s:
+                            #         improvement = 1
+                            #     else:
+                            #         improvement = child_score - par_s
+                            # else:
+                            #     if child_score >= self._maxline:
+                            #         improvement = 1
+                            #     else:
+                            #         improvement = (child_score - par_s)/(self._maxline - par_s)
+                            benefit += intensity * (child_score - max_par_score)
+                            # benefit += intensity * improvement
                     benefit_list_origin.append(benefit)
-                    benefit_list.append(benefit / (llm.input_price + llm.output_price))
+                    benefit_list.append(benefit * price_score)
 
             max_benefit = max([x for x in benefit_list if x])
             benefit_list = [x if x is not None else max_benefit for x in benefit_list]
             probabilities = sample_iterator.softmax(benefit_list, temperature)
             index = np.random.choice(len(self._llm_list), p=probabilities)
-        # print('------------response score list--------------')
-        # print(self._response_score)
-        # print(benefit_list)
-        # print(probabilities)
-        # print(index)
-        # print('---------------------------------------------')
         res = copy.deepcopy(self._response_score)
         llm_sample_list.append((res, benefit_list_origin, benefit_list, probabilities, index))
         llm_sample_file = f'{log_dir}/llm_sample.pkl'

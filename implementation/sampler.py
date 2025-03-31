@@ -190,7 +190,7 @@ class Sampler:
                     max_score = max([max_score, *[x for x in score_list if x]])
                     
                     if tune_sampler.update_score(indices, score_list) is False:
-                        print('sampler suggest should end sample, break')
+                        print('sampler suggest should end sample, break', llm_ins.llm_name)
                         break
 
             with self._mux_sem:
