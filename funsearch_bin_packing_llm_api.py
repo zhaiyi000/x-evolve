@@ -21,7 +21,7 @@ from concurrent.futures import ProcessPoolExecutor, TimeoutError
 import re
 import gc
 import os
-from config import config_type, log_dir
+from config import config_type, log_dir, additional_prompt, specification
 
 
 def _trim_preface_of_body(sample: str) -> str:
@@ -152,19 +152,7 @@ class LLMAPI(sampler.LLM):
 # 2.You can merge the strategies of multiple algorithms, and try to improve the performance of the functions you generate by combining the advantages of multiple algorithms.
 # 3.You can break the traditional thinking and try new ideas.That is to say, you can try any possible methods as long as they are correct and reasonable.
 # """
-        additional_prompt = \
-"""
-Create an improved Python function for constructing 8-dimensional cap sets that demonstrates:
-Novel vector priority strategy: Design a smarter vector selection strategy.
-Parameter tuning points: Mark adjustable parameters using tunable([option1, option2, ...]) wrapper. Examples:
-`if axis_balance_weight = tunable([0.1, 0.3, 0.5])`
-`sorted(elements, key=lambda x: tunable([x.diversity, x.centrality]))`
-Focus first on innovative vector selection heuristics, then expose tuning parameters via `tunable()`. Keep implementation practical but non-trivial. 
-
-Note:
-1. Do not generate the `tunable()` function implementation.
-2. Any helper functions should be defined within the priority function.
-"""
+        
         self._additional_prompt = additional_prompt
         self._trim = trim
 
@@ -269,60 +257,6 @@ class Sandbox(evaluator.Sandbox):
                 return None, True
         return result_list, False
 
-
-specification = r'''
-import numpy as np
-import itertools
-from typing import List, Tuple
-
-
-@funsearch.run
-def evaluate(n: int) -> int:
-    """Returns the size of an `n`-dimensional cap set."""
-    capset = solve(n)
-    return len(capset)
-
-
-def solve(n: int) -> np.ndarray:
-    """Returns a large cap set in `n` dimensions."""
-    all_vectors = np.array(list(itertools.product((0, 1, 2), repeat=n)), dtype=np.int32)
-
-    # Powers in decreasing order for compatibility with `itertools.product`, so
-    # that the relationship `i = all_vectors[i] @ powers` holds for all `i`.
-    powers = np.array([3 ** i for i in range(n - 1, -1, -1)], dtype=np.int32)
-
-    # Precompute all priorities.
-    priorities = np.array([priority(tuple(vector)) for vector in all_vectors], dtype=np.float32)
-
-    # Build `capset` greedily, using priorities for prioritization.
-    capset = np.empty(shape=(0, n), dtype=np.int32)
-    while np.any(priorities != -np.inf):
-        # Add a vector with maximum priority to `capset`, and set priorities of 
-        # invalidated vectors to `-inf`, so that they never get selected.
-        max_index = np.argmax(priorities)
-        vector = all_vectors[None, max_index] # [1, n]
-        blocking = np.einsum('cn,n->c', (- capset - vector) % 3, powers) # [C]
-        priorities[blocking] = -np.inf
-        priorities[max_index] = -np.inf
-        capset = np.concatenate([capset, vector], axis=0)
-
-    return capset
-
-
-@funsearch.evolve
-def priority(el: tuple[int, ...]) -> float:
-    """Returns the priority with which we want to add `el` to the cap set in `n=8` dimensions.
-    
-    Args:
-        el: An 8-dimensional vector (tuple) with components in {0, 1, 2}.
-
-    Return:
-        Priority score determining selection order in greedy algorithm. Higher
-        values indicate the vector should be considered earlier.
-    """
-    n = 8
-    return 0.0
-'''
 
 # It should be noted that the if __name__ == '__main__' is required.
 # Because the inner code uses multiprocess evaluation.
