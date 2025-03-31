@@ -85,7 +85,7 @@ class Sampler:
             template: code_manipulation.Program,
             function_to_evolve: str,
             evaluator: evaluator.Evaluator,
-            samples_per_prompt: int,
+            samples_per_prompt: int = 1,
             max_sample_nums: int | None = None,
             llm_class: Type[LLM] = LLM
     ):
@@ -102,48 +102,69 @@ class Sampler:
 
 
     def launch_llm(self, thread_i, llm):
-        try:
-            while True:
+        while True:
+            try:
                 with self._mux_sem:
                     # stop the search process if hit global max sample nums
                     if self._max_sample_nums and self._get_global_spaces_nums() >= self._max_sample_nums:
                         # self._queue.put('end')
                         break
+                    self._global_spaces_nums_plus_one()
                     prompt, parent_score = self._database.get_prompt()
                     llm_ins = llm.calculate_probability()
-                    print('thread_i', thread_i, llm_ins.llm_name, 'request...')
                 reset_time = time.time()
                 samples = self._llm.draw_samples(llm_ins, prompt.code)
                 sample_time = (time.time() - reset_time) / self._samples_per_prompt
                 self._queue.put((samples, sample_time, llm_ins, parent_score))
-                with self._mux_sem:
-                    self._global_spaces_nums_plus_one()
-                    print('thread_i', thread_i, 'done!', f'call llm times: {self._get_global_spaces_nums()}')
-        except Exception as err:
-            print('thread_i', thread_i)
-            print('errrrrrr', 'launch_llm', err)
+            except Exception as err:
+                print('thread_i', thread_i)
+                print('errrrrrr', 'launch_llm', err)
+                import traceback
+                traceback.print_exc()
 
     
     def sample(self, profiler):
         """Continuously gets prompts, samples programs, sends them for analysis.
         """
         llm = sample_llm_api.EvaluateLLM()
+        launch_thread_list: list[threading.Thread] = []
         for thread_i in range(self._llm_cnt):
             launch_thread = threading.Thread(target=self.launch_llm, args=(thread_i, llm), daemon=True)
             launch_thread.start()
+            launch_thread_list.append(launch_thread)
 
+        call_llm_times = 0
         while True:
-            llm_return_obj = self._queue.get()
-            if llm_return_obj == 'end':
-                break
+            try:
+                llm_return_obj = self._queue.get(timeout=10)
+            except queue.Empty:
+                if any([launch_thread.is_alive() for launch_thread in launch_thread_list]):
+                    continue
+                else:
+                    print('all tasks done!')
+                    break
+
             samples, sample_time, llm_ins, parent_score = llm_return_obj
-            self.update_database(samples, sample_time, llm_ins, parent_score, llm, profiler)
+            try:
+                self.update_database(samples, sample_time, llm_ins, parent_score, llm, profiler)
+            except Exception as err:
+                print('update_database errrrrr')
+                print(err)
+                import traceback
+                traceback.print_exc()
+            call_llm_times += 1
+            print('call llm times', call_llm_times)
     
     
     def update_database(self, samples, sample_time, llm_ins, parent_score, llm, profiler):
         # samples_new = []
-        for sample in samples:
+        for llm_name, prompt, sample_ori, sample in samples:
             with self._mux_sem:
+                print(f'\n\n\n-- {llm_name} -- {parent_score} ----prompt-----------')
+                print(prompt)
+                print(f'\n\n\n-- {llm_name} -- {parent_score} ----sample--------')
+                print(sample_ori)
+                print('-----------------------')
                 tune_sampler = sample_iterator.SampleIterator(code=sample)
                 batch_size = 64
                 MIN_SCORE = -1e10
@@ -158,7 +179,11 @@ class Sampler:
                         cur_global_sample_nums = self._get_global_sample_nums()
                         global_sample_nums_list.append(cur_global_sample_nums)
                 
-                new_function_list, evaluate_time, score_list, decisions_list = self._evaluator.analyse(tune_sampler, indices)
+                res_data, timeout = self._evaluator.analyse(tune_sampler, indices)
+                if timeout:
+                    print('errrrr timeout')
+                    break
+                new_function_list, evaluate_time, score_list, decisions_list = res_data
                 
                 with self._mux_sem:
                     profiler.register_function_list(global_sample_nums_list, new_function_list, sample_time, evaluate_time, score_list, decisions_list)

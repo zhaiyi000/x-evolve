@@ -198,10 +198,12 @@ class Evaluator:
             # current_input is a key (perhaps in string type)
             # do not ignore this when implementing SandBox !!!
 
-            result_list = self._sandbox.run(
+            result_list, timeout = self._sandbox.run(
                 program_list, self._function_to_run, self._function_to_evolve, self._inputs, current_input,
                 self._timeout_seconds
             )
+            if timeout:
+                return None, timeout
 
             for (test_output, runs_ok), scores_per_test in zip(result_list, scores_per_test_list):
                 if runs_ok and not _calls_ancestor(program, self._function_to_evolve) and test_output is not None:
@@ -222,4 +224,4 @@ class Evaluator:
         # If 'score_per_test' is empty, we record it to the profiler at once.
         # if scores_per_test:
         
-        return sample_template, evaluate_time, score_list, decisions_list
+        return (sample_template, evaluate_time, score_list, decisions_list), False

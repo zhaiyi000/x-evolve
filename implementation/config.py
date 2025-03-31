@@ -1,74 +1,30 @@
-# Copyright 2023 DeepMind Technologies Limited
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#    http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-# ==============================================================================
-
-"""Configuration of a FunSearch experiment."""
-from __future__ import annotations
-
-import dataclasses
-from typing import Type
-
-from implementation import sampler
-from implementation import evaluator
+import os
 
 
-@dataclasses.dataclass(frozen=True)
-class ProgramsDatabaseConfig:
-    """Configuration of a ProgramsDatabase.
-
-    Attributes:
-      functions_per_prompt: Number of previous programs to include in prompts.
-      num_islands: Number of islands to maintain as a diversity mechanism.
-      reset_period: How often (in seconds) the weakest islands should be reset.
-      cluster_sampling_temperature_init: Initial temperature for softmax sampling
-          of clusters within an island.
-      cluster_sampling_temperature_period: Period of linear decay of the cluster
-          sampling temperature.
-    """
-    functions_per_prompt: int = 2
-    num_islands: int = 1
-    reset_period: int = 4 * 60 * 60
-    cluster_sampling_temperature_init: float = 0.1
-    cluster_sampling_temperature_period: int = 30_000
+if 'funsearch_config_type' not in os.environ:
+    raise Exception('need config type')
 
 
-@dataclasses.dataclass(frozen=True)
-class Config:
-    """Configuration of a FunSearch experiment.
-
-    Attributes:
-      programs_database: Configuration of the evolutionary algorithm.
-      num_samplers: Number of independent Samplers in the experiment. A value
-          larger than 1 only has an effect when the samplers are able to execute
-          in parallel, e.g. on different machines of a distributed system.
-      num_evaluators: Number of independent program Evaluators in the experiment.
-          A value larger than 1 is only expected to be useful when the Evaluators
-          can execute in parallel as part of a distributed system.
-      samples_per_prompt: How many independently sampled program continuations to
-          obtain for each prompt.
-    """
-    programs_database: ProgramsDatabaseConfig = dataclasses.field(default_factory=ProgramsDatabaseConfig)
-    num_samplers: int = 1  # RZ: I just use one samplers
-    # num_evaluators: int = 140
-    num_evaluators: int = 1  # RZ: I just use one evaluators
-    samples_per_prompt: int = 4
-    evaluate_timeout_seconds: int = 30  # RZ: add timeout seconds
+config_type = os.environ['funsearch_config_type']
+if config_type not in ['bin_packing', 'cap_set']:
+    raise Exception('wrong type')
 
 
-@dataclasses.dataclass()
-class ClassConfig:
-    """Implemented by RZ. Configuration of 'class LLM' and 'class SandBox' used in this implementation.
-    """
-    llm_class: Type[sampler.LLM]
-    sandbox_class: Type[evaluator.Sandbox]
+if config_type == 'bin_packing':
+    evaluate_function_c_l1 = 0.1
+    evaluate_function_c_1 = 100
+    evaluate_function_temperature = 0.1
+    evaluate_function_mask_half = False
+
+    sample_iterator_temperature = 1
+    sample_iterator_no_update_cnt = 3
+elif config_type == 'cap_set':
+    evaluate_function_c_l1 = 0.
+    evaluate_function_c_1 = 1
+    evaluate_function_temperature = 10
+    evaluate_function_mask_half = True
+
+    sample_iterator_temperature = 100
+    sample_iterator_no_update_cnt = 10
+else:
+    raise Exception('wrong type')

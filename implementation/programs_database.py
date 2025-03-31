@@ -27,7 +27,6 @@ import numpy as np
 import scipy
 
 from implementation import code_manipulation
-from implementation import config as config_lib
 from implementation import evaluate_function
 import heapq, queue, math
 
@@ -101,14 +100,12 @@ class ProgramsDatabase:
 
     def __init__(
             self,
-            config: config_lib.ProgramsDatabaseConfig,
             template: code_manipulation.Program,
             function_to_evolve: str,
     ) -> None:
-        self._config: config_lib.ProgramsDatabaseConfig = config
         self._template: code_manipulation.Program = template
         self._function_to_evolve: str = function_to_evolve
-        self._functions_per_prompt: int = config.functions_per_prompt
+        self._functions_per_prompt: int = 2
         self._nodes: dict[str, Node] = {}
         self._best_score: float = -float('inf')
 
@@ -183,7 +180,7 @@ class ProgramsDatabase:
             # **kwargs  # RZ: add this for profiling
     ) -> None:
         """Registers `program` in the specified island."""
-        if isinstance(scores_per_test, np.float64):
+        if isinstance(scores_per_test, (np.float64, float, int)):
             score = scores_per_test
         elif isinstance(scores_per_test, ScoresPerTest):
             raise Exception('todo')

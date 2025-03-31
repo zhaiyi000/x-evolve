@@ -18,10 +18,11 @@ import http.client
 from implementation import sampler
 import requests
 import time
-from concurrent.futures import ProcessPoolExecutor
+from concurrent.futures import ProcessPoolExecutor, TimeoutError
 import re
 import gc
 import os
+from implementation.config import *
 
 
 def _trim_preface_of_body(sample: str) -> str:
@@ -46,15 +47,7 @@ def _trim_preface_of_body(sample: str) -> str:
     """
     start_str = 'def priority'
     end_str = '    return'
-    code_list = re.findall('```python(.*?)```', sample, flags=re.DOTALL)
-    code_core = None
-    for code in code_list:
-        if '\n'+start_str in code:  # and code.count('\n'+end_str) == 1:
-            code_core = code
-            break
-    if code_core is None:
-        raise Exception('Can not find core code.')
-    lines = code.splitlines()
+    lines = sample.splitlines()
     func_body_lineno = 0
     find_def_declaration = False
     for lineno, line in enumerate(lines):
@@ -77,7 +70,7 @@ def request(llm_ins: sample_llm_api.LLM, prompt: str):
     for retry_i in range(5):
         try:
             # print(llm_ins.llm_name, 'request...')
-            llm_ins = sample_llm_api.get_qwen_32b()
+            llm_ins = sample_llm_api.get_random_model()
             # print('-----------------------')
             # print(prompt)
             # print('-----------------------')
@@ -107,7 +100,7 @@ def request(llm_ins: sample_llm_api.LLM, prompt: str):
                     'allow_fallbacks': False
                 }
 
-            response = requests.post('https://ark.cn-beijing.volces.com/api/v3/chat/completions', headers=headers, json=json_data)
+            response = requests.post(llm_ins.request_http, headers=headers, json=json_data)
 
             if response.status_code != 200:
                 print('response.status_code', response.status_code, response.text)
@@ -120,17 +113,12 @@ def request(llm_ins: sample_llm_api.LLM, prompt: str):
                 raise Exception('not the specific privoder')
             
             response_content = data['choices'][0]['message']['content']
-            print('-----------------------')
-            print(prompt)
-            print('-----------------------')
-            print(response_content)
-            print('-----------------------')
-            return response_content
+            return llm_ins.llm_name, prompt, response_content
         except Exception as e:
-            print(f'errr111__{retry_i}')
+            print(f'errr111__{retry_i}', llm_ins.llm_name, response.text)
             print(e)
             time.sleep(1)
-    return prompt
+    return llm_ins.llm_name, prompt, prompt
 
 
 class LLMAPI(sampler.LLM):
@@ -167,12 +155,16 @@ class LLMAPI(sampler.LLM):
 # """
         additional_prompt = \
 """
-Create an improved Python function for online bin-packing that demonstrates:
-Novel priority strategy: Propose a smarter item-bin matching approach considering both spatial fit and future packing potential
-Parameter tuning points: Clearly mark tuning parameters using tunable([option1, option2, ...]) wrapper. Example:
-`if remaining_capacity > tunable([0.2, 0.5]):`
-`sorted(items, key=lambda x: tunable([x.size, x.weight]))`
-Focus first on strategic innovation, then expose tuning parameters through tunable([option1, option2, ...]) calls. Keep implementation practical but non-trivial.
+Create an improved Python function for constructing 8-dimensional cap sets that demonstrates:
+Novel vector priority strategy: Design a smarter vector selection strategy.
+Parameter tuning points: Mark adjustable parameters using tunable([option1, option2, ...]) wrapper. Examples:
+`if axis_balance_weight = tunable([0.1, 0.3, 0.5])`
+`sorted(elements, key=lambda x: tunable([x.diversity, x.centrality]))`
+Focus first on innovative vector selection heuristics, then expose tuning parameters via `tunable()`. Keep implementation practical but non-trivial. 
+
+Note:
+1. Do not generate the `tunable()` function implementation.
+2. Any helper functions should be defined within the priority function.
 """
         self._additional_prompt = additional_prompt
         self._trim = trim
@@ -187,10 +179,14 @@ Focus first on strategic innovation, then expose tuning parameters through tunab
         futures = [request(llm_ins, prompt) for prompt in prompt_list]
         response_list = []
         for future in futures:
-            response = future
+            llm_name, prompt, response_ori = future
             if self._trim:
-                response = _trim_preface_of_body(response)
-            response_list.append(response)
+                try:
+                    response = _trim_preface_of_body(response_ori)
+                except Exception as err:
+                    print('errrrrr response_ori', response_ori)
+                    raise err
+            response_list.append((llm_name, prompt, response_ori, response))
         return response_list
 
 
@@ -227,7 +223,7 @@ class Sandbox(evaluator.Sandbox):
     2) stops the execution of the code in time (avoid endless loop).
     """
 
-    def __init__(self, verbose=False, numba_accelerate=True):
+    def __init__(self, verbose=False, numba_accelerate=False):
         """
         Args:
             verbose         : Print evaluate information.
@@ -236,7 +232,7 @@ class Sandbox(evaluator.Sandbox):
         """
         self._verbose = verbose
         self._numba_accelerate = numba_accelerate
-        # self.executor = ProcessPoolExecutor(max_workers=min(os.cpu_count(), 64))
+        self.executor = ProcessPoolExecutor(max_workers=min(os.cpu_count(), 64))
 
     def run(
             self,
@@ -257,98 +253,88 @@ class Sandbox(evaluator.Sandbox):
         print(f'launch {len(program_list)} evaluate tasks')
 
         dataset = inputs[test_input]
-        #futures = [self.executor.submit(_compile_and_run_function, program, function_to_run, function_to_evolve, dataset, self._numba_accelerate) for program in program_list]
-        executor = ProcessPoolExecutor(max_workers=min(os.cpu_count(), 64))
-        futures = [executor.submit(_compile_and_run_function, program, function_to_run, function_to_evolve, dataset, self._numba_accelerate) for program in program_list]
+        futures = [self.executor.submit(_compile_and_run_function, program, function_to_run, function_to_evolve, dataset, self._numba_accelerate) for program in program_list]
         result_list = []
         for future in futures:
-            result = future.result()
-            result_list.append(result)
-        del futures, executor
-        gc.collect()
-        # print(f'evaluate tasks done')
-        return result_list
+            try:
+                result = future.result(timeout=15)
+                result_list.append(result)
+            except TimeoutError:
+                for pid in self.executor._processes:  # 访问内部进程PID
+                    try:
+                        os.kill(pid, 9)  # 强制杀死进程
+                    except ProcessLookupError:
+                        pass
+                self.executor = ProcessPoolExecutor(max_workers=min(os.cpu_count(), 64))
+                print('sanbox timeout errrr')
+                return None, True
+        return result_list, False
 
 
 specification = r'''
 import numpy as np
-
-
-def get_valid_bin_indices(item: float, bins: np.ndarray) -> np.ndarray:
-    """Returns indices of bins in which item can fit."""
-    return np.nonzero((bins - item) >= 0)[0]
-
-
-def online_binpack(
-        items: tuple[float, ...], bins: np.ndarray
-) -> tuple[list[list[float, ...], ...], np.ndarray]:
-    """Performs online binpacking of `items` into `bins`."""
-    # Track which items are added to each bin.
-    packing = [[] for _ in bins]
-    # Add items to bins.
-    for item in items:
-        # Extract bins that have sufficient space to fit item.
-        valid_bin_indices = get_valid_bin_indices(item, bins)
-        # Score each bin based on heuristic.
-        priorities = priority(item, bins[valid_bin_indices])
-        # Add item to bin with highest priority.
-        best_bin = valid_bin_indices[np.argmax(priorities)]
-        bins[best_bin] -= item
-        packing[best_bin].append(item)
-    # Remove unused bins from packing.
-    packing = [bin_items for bin_items in packing if bin_items]
-    return packing, bins
+import itertools
+from typing import List, Tuple
 
 
 @funsearch.run
-def evaluate(instances: dict) -> float:
-    """Evaluate heuristic function on a set of online binpacking instances."""
-    # List storing number of bins used for each instance.
-    num_bins = []
-    # Perform online binpacking for each instance.
-    for name in instances:
-        instance = instances[name]
-        capacity = instance['capacity']
-        items = instance['items']
-        # Create num_items bins so there will always be space for all items,
-        # regardless of packing order. Array has shape (num_items,).
-        bins = np.array([capacity for _ in range(instance['num_items'])])
-        # Pack items into bins and return remaining capacity in bins_packed, which
-        # has shape (num_items,).
-        _, bins_packed = online_binpack(items, bins)
-        # If remaining capacity in a bin is equal to initial capacity, then it is
-        # unused. Count number of used bins.
-        num_bins.append((bins_packed != capacity).sum())
-    # Score of heuristic function is negative of average number of bins used
-    # across instances (as we want to minimize number of bins).
-    return -np.mean(num_bins)
+def evaluate(n: int) -> int:
+    """Returns the size of an `n`-dimensional cap set."""
+    capset = solve(n)
+    return len(capset)
+
+
+def solve(n: int) -> np.ndarray:
+    """Returns a large cap set in `n` dimensions."""
+    all_vectors = np.array(list(itertools.product((0, 1, 2), repeat=n)), dtype=np.int32)
+
+    # Powers in decreasing order for compatibility with `itertools.product`, so
+    # that the relationship `i = all_vectors[i] @ powers` holds for all `i`.
+    powers = np.array([3 ** i for i in range(n - 1, -1, -1)], dtype=np.int32)
+
+    # Precompute all priorities.
+    priorities = np.array([priority(tuple(vector)) for vector in all_vectors], dtype=np.float32)
+
+    # Build `capset` greedily, using priorities for prioritization.
+    capset = np.empty(shape=(0, n), dtype=np.int32)
+    while np.any(priorities != -np.inf):
+        # Add a vector with maximum priority to `capset`, and set priorities of 
+        # invalidated vectors to `-inf`, so that they never get selected.
+        max_index = np.argmax(priorities)
+        vector = all_vectors[None, max_index] # [1, n]
+        blocking = np.einsum('cn,n->c', (- capset - vector) % 3, powers) # [C]
+        priorities[blocking] = -np.inf
+        priorities[max_index] = -np.inf
+        capset = np.concatenate([capset, vector], axis=0)
+
+    return capset
 
 
 @funsearch.evolve
-def priority(item: float, bins: np.ndarray) -> np.ndarray:
-    """Returns priority with which we want to add item to each bin.
-
+def priority(el: tuple[int, ...]) -> float:
+    """Returns the priority with which we want to add `el` to the cap set in `n=8` dimensions.
+    
     Args:
-        item: Size of item to be added to the bin.
-        bins: Array of capacities for each bin.
+        el: An 8-dimensional vector (tuple) with components in {0, 1, 2}.
 
     Return:
-        Array of same size as bins with priority score of each bin.
+        Priority score determining selection order in greedy algorithm. Higher
+        values indicate the vector should be considered earlier.
     """
-    ratios = item / bins
-    log_ratios = np.log(ratios)
-    priorities = -log_ratios
-    return priorities
+    n = 8
+    return 0.0
 '''
 
 # It should be noted that the if __name__ == '__main__' is required.
 # Because the inner code uses multiprocess evaluation.
 if __name__ == '__main__':
-    class_config = config.ClassConfig(llm_class=LLMAPI, sandbox_class=Sandbox)
-    config = config.Config(samples_per_prompt=1, evaluate_timeout_seconds=30)
-
-    bin_packing_or3 = {'OR3': bin_packing_utils.datasets['OR3']}
-    global_max_sample_num = 100  # if it is set to None, funsearch will execute an endless loop
+    if config_type == 'bin_packing':
+        inputs = {'OR3': bin_packing_utils.datasets['OR3']}
+    elif config_type == 'cat_set':
+        inputs = {'8': 8}
+    else:
+        raise Exception('wrong case')
+    global_max_sample_num = 3000  # if it is set to None, funsearch will execute an endless loop
     import shutil, os
     log_dir = os.environ.get('LOG_DIR', 'logs')
     if os.path.exists(log_dir):
@@ -357,9 +343,7 @@ if __name__ == '__main__':
         # time.sleep(1)
     funsearch.main(
         specification=specification,
-        inputs=bin_packing_or3,
-        config=config,
+        inputs=inputs,
         max_sample_nums=global_max_sample_num,
-        class_config=class_config,
         log_dir=f'{log_dir}/funsearch_llm_api',
     )

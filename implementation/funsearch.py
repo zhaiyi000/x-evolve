@@ -23,7 +23,6 @@ from __future__ import annotations
 from typing import Any, Tuple, Sequence
 
 from implementation import code_manipulation
-from implementation import config as config_lib
 from implementation import evaluator
 from implementation import programs_database
 from implementation import sampler
@@ -52,9 +51,7 @@ def _extract_function_names(specification: str) -> Tuple[str, str]:
 def main(
         specification: str,
         inputs: Sequence[Any],
-        config: config_lib.Config,
         max_sample_nums: int | None,
-        class_config: config_lib.ClassConfig,
         **kwargs
 ):
     """Launches a FunSearch experiment.
@@ -62,12 +59,11 @@ def main(
     Args:
         specification: the boilerplate code for the problem.
         inputs       : the data instances for the problem (see 'bin_packing_utils.py').
-        config       : config file.
         max_sample_nums: the maximum samples nums from LLM. 'None' refers to no stop.
     """
     function_to_evolve, function_to_run = _extract_function_names(specification)
     template = code_manipulation.text_to_program(specification)
-    database = programs_database.ProgramsDatabase(config.programs_database, template, function_to_evolve)
+    database = programs_database.ProgramsDatabase(template, function_to_evolve)
 
     # get log_dir and create profiler
     log_dir = kwargs.get('log_dir', None)
@@ -82,19 +78,18 @@ def main(
         function_to_evolve,
         function_to_run,
         inputs,
-        timeout_seconds=config.evaluate_timeout_seconds,
-        sandbox_class=class_config.sandbox_class
+        timeout_seconds=30,
     )
 
     # We send the initial implementation to be analysed by one of the evaluators.
     initial = template.get_function(function_to_evolve).body
-    sample_template, evaluate_time, score_list, decisions_list = evaluator_ins.analyse(sample_iterator.SampleIterator(initial), [[]])
+    (sample_template, evaluate_time, score_list, decisions_list), _ = evaluator_ins.analyse(sample_iterator.SampleIterator(initial), [[]])
     profiler.register_function_list(None, sample_template, None, evaluate_time, score_list, decisions_list)
     new_function, _ = evaluator._sample_to_program(initial, template, function_to_evolve)
     database.register_program(new_function, max(score_list))
 
     # Set global max sample nums.
-    sampler_ins = sampler.Sampler(database, template, function_to_evolve, evaluator_ins, config.samples_per_prompt, max_sample_nums=max_sample_nums, llm_class=class_config.llm_class)
+    sampler_ins = sampler.Sampler(database, template, function_to_evolve, evaluator_ins, max_sample_nums=max_sample_nums)
 
     # This loop can be executed in parallel on remote sampler machines. As each
     # sampler enters an infinite loop, without parallelization only the first

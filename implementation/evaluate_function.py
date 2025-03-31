@@ -1,6 +1,7 @@
 import numpy as np
 import math
 from implementation import sample_iterator 
+from config import *
 # from cluster import Cluster
 
 '''
@@ -13,11 +14,29 @@ from implementation import sample_iterator
 # evaluate_function_file = 'evaluate_function.pkl'
 # evaluate_function_list = []
 # import pickle
+
+
+def cal_intensity(c_1, t_init):
+    if config_type == 'bin_packing':
+        return 1 - math.exp(c_1 * (t_init - 1))
+    elif config_type == 'cap_set':
+        return math.exp(c_1 * -t_init) - math.exp(c_1 * -1)
+    else:
+        raise Exception('wrong type')
+
+
 def calculate_score(score_list: list, visit_list: list, length_list: list):
     # evaluate_function_list.append((score_list, visit_list, length_list))
     # with open(evaluate_function_file, 'wb') as f:
     #     pickle.dump(evaluate_function_list, f)
     # 转换初始评分
+    
+    if evaluate_function_mask_half:
+        min_weight = min(score_list)
+        indices = np.random.choice(len(score_list), len(score_list)//2, replace=False)
+        for idx in indices:
+            score_list[idx] = min_weight
+
     s_min = min(score_list)
     s_max = max(score_list)
     if s_max == s_min:
@@ -32,16 +51,16 @@ def calculate_score(score_list: list, visit_list: list, length_list: list):
     '''
     c_v1 = 0.1
     c_v2 = 3
-    c_l1 = 0.1
+    c_l1 = evaluate_function_c_l1
     c_l2 = 3
     len_baseline = min([length_list[i] for i, score in enumerate(score_list) if score == s_max])
-    c_1 = 100
-    temperature = 0.1
+    c_1 = evaluate_function_c_1
+    temperature = evaluate_function_temperature
     # 计算每个序列的权重
     weights = []
     for score, t_init, visit, length in zip(score_list, transformed_initials, visit_list, length_list):
         # 测试了对于小于长度baseline的序列不加分也不减分的情况，区分度不如都减分的情况
-        intensity = 1 - math.exp(c_1 * (t_init - 1))
+        intensity = cal_intensity(c_1, t_init)
         if len_baseline > 0:
             if length > len_baseline:
                 weight = score - c_v1 * (visit ** c_v2) * intensity - c_l1 * ((length / len_baseline) ** c_l2) * intensity
