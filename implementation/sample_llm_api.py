@@ -307,4 +307,15 @@ def get_gemini_20() -> LLM:
 
 def get_random_model() -> LLM:
     return llm_list[np.random.choice(len(llm_list), size=1)[0]]
+
+
+def get_random_gemini20_deepseekv3() -> LLM:
+    local_llm_list = [get_gemini_20(), get_deepseek_v3()]
+    return local_llm_list[np.random.choice(len(local_llm_list), size=1)[0]]
+
+
+def get_random_gemini20_deepseekv3_qwen32b() -> LLM:
+    local_llm_list = [get_gemini_20(), get_deepseek_v3(), get_qwen_32b()]
+    return local_llm_list[np.random.choice(len(local_llm_list), size=1)[0]]
+
     
