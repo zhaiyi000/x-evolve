@@ -58,9 +58,12 @@ def _trim_preface_of_body(sample: str) -> str:
             break
     if find_def_declaration:
         code = ''
+        sign = False
         for line in lines[func_body_lineno + 1:]:
             code += line + '\n'
             if line.startswith(end_str):
+                sign = True
+            if sign and line.strip()[-1] != '\\':
                 break
         return code
     return sample
