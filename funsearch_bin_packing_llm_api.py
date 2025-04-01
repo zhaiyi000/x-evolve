@@ -262,7 +262,7 @@ if __name__ == '__main__':
         inputs = {'8': 8}
     else:
         raise Exception('wrong case')
-    global_max_sample_num = 6000  # if it is set to None, funsearch will execute an endless loop
+    global_max_sample_num = 1000  # if it is set to None, funsearch will execute an endless loop
     import shutil, os
     if os.path.exists(log_dir):
         # input('delete logs folder?')
