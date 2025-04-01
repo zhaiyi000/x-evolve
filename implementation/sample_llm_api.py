@@ -282,13 +282,6 @@ class EvaluateLLM:
         return self._llm_list[index]
 
 
-def get_qwen_32b() -> LLM:
-    llm_name = "DeepSeek-R1-distill-qwen-32b"
-    for llm in llm_list:
-        if llm.llm_name == llm_name:
-            return llm
-    raise ValueError(f"LLM {llm_name} not found")
-
 def get_llm(llm_name: str) -> LLM:
     for llm in llm_list:
         if llm.llm_name == llm_name:
@@ -296,22 +289,20 @@ def get_llm(llm_name: str) -> LLM:
     raise ValueError(f"LLM {llm_name} not found")
     
 
+def get_qwen_32b() -> LLM:
+    return get_llm("DeepSeek-R1-distill-qwen-32b")
 
 
 def get_deepseek_v3() -> LLM:
-    llm_name = "DeepSeek-V3"
-    for llm in llm_list:
-        if llm.llm_name == llm_name:
-            return llm
-    raise ValueError(f"LLM {llm_name} not found")
-    
+    return get_llm("DeepSeek-V3")
+
 
 def get_claude_37_thinking() -> LLM:
-    llm_name = "Claude-3.7-Sonnet-thinking"
-    for llm in llm_list:
-        if llm.llm_name == llm_name:
-            return llm
-    raise ValueError(f"LLM {llm_name} not found")
+    return get_llm("Claude-3.7-Sonnet-thinking")
+
+
+def get_gemini_20() -> LLM:
+    return get_llm("Gemini-2.0-flash-001")
 
 
 def get_random_model() -> LLM:
