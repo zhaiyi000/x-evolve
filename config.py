@@ -3,6 +3,7 @@ import os
 
 config_type = 'cap_set'
 log_dir = os.environ.get('LOG_DIR', 'logs')
+sample_llm_cnt = 10
 
 
 

@@ -29,6 +29,7 @@ import copy
 import threading
 import queue
 from implementation import sample_llm_api
+from config import sample_llm_cnt
 
 
 class LLM(ABC):
@@ -97,7 +98,7 @@ class Sampler:
         self._template = template
         self._function_to_evolve = function_to_evolve
         self._mux_sem = threading.Semaphore(1)
-        self._llm_cnt = 10
+        self._llm_cnt = sample_llm_cnt
         self._queue = queue.Queue(max(self._llm_cnt//3, 1))
 
 
@@ -164,7 +165,7 @@ class Sampler:
                 print(prompt)
                 print(f'\n\n\n-- {llm_name} -- {parent_score} ----sample--------')
                 print(sample_ori)
-                print('-----------------------')
+                print(f'\n\n\n-- {llm_name} -- {parent_score} ----measure-----------')
                 tune_sampler = sample_iterator.SampleIterator(code=sample)
                 batch_size = 64
                 MIN_SCORE = -1e10
@@ -194,6 +195,7 @@ class Sampler:
                         break
 
             with self._mux_sem:
+                print(f'\n\n\n-- {llm_name} -- {parent_score} ----end-----------')
                 if max_score != MIN_SCORE:
                     function_code = tune_sampler.get_final_code()
                     new_function, _ = evaluator._sample_to_program(

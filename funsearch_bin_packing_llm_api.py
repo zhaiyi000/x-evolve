@@ -49,7 +49,8 @@ def _trim_preface_of_body(sample: str) -> str:
     lines = sample.splitlines()
     func_body_lineno = 0
     find_def_declaration = False
-    for lineno, line in enumerate(lines):
+    for lineno in range(len(lines)-1, -1, -1):
+        line = lines[lineno]
         # find the first 'def' statement in the given code
         if line.startswith(start_str):
             func_body_lineno = lineno
@@ -261,7 +262,7 @@ if __name__ == '__main__':
         inputs = {'8': 8}
     else:
         raise Exception('wrong case')
-    global_max_sample_num = 3000  # if it is set to None, funsearch will execute an endless loop
+    global_max_sample_num = 6000  # if it is set to None, funsearch will execute an endless loop
     import shutil, os
     if os.path.exists(log_dir):
         # input('delete logs folder?')
