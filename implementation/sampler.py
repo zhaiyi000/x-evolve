@@ -161,11 +161,11 @@ class Sampler:
         # samples_new = []
         for llm_name, prompt, sample_ori, sample in samples:
             with self._mux_sem:
-                print(f'\n\n\n-- {llm_name} -- {parent_score} ----prompt-----------')
+                print(f'\n\n\n-- {parent_score} -- {llm_name} ----prompt-----------')
                 print(prompt)
-                print(f'\n\n\n-- {llm_name} -- {parent_score} ----sample--------')
+                print(f'\n\n\n-- {parent_score} -- {llm_name} ----sample--------')
                 print(sample_ori)
-                print(f'\n\n\n-- {llm_name} -- {parent_score} ----measure-----------')
+                print(f'\n\n\n-- {parent_score} -- {llm_name} ----measure-----------')
                 tune_sampler = sample_iterator.SampleIterator(code=sample)
                 batch_size = 64
                 MIN_SCORE = -1e10
@@ -189,7 +189,7 @@ class Sampler:
                         break
 
             with self._mux_sem:
-                print(f'\n\n\n-- {llm_name} -- {parent_score} ----end-----------')
+                print(f'\n\n\n-- {parent_score} -- {llm_name} ----end-----------')
                 if max_score != MIN_SCORE:
                     function_code = tune_sampler.get_final_code()
                     new_function, _ = evaluator._sample_to_program(
