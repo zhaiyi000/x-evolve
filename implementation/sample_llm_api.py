@@ -2,8 +2,7 @@ import dataclasses
 import numpy as np
 from implementation import sample_iterator
 import math
-import copy
-from config import log_dir
+from config import sample_llm_api_min_score, config_type
 byte_key = "Bearer f184bcd9-68b0-49be-8a3f-ea095ee71e14"
 open_key = "Bearer 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"
 byte_http = 'https://ark.cn-beijing.volces.com/api/v3/chat/completions'
@@ -184,7 +183,6 @@ basescore: response的基准评分
 self._max_score: response的最高得分,初始为负无穷
 base_price_score: 价格评分的基准值
 '''
-llm_sample_list = []
 import pickle
 import os
 class EvaluateLLM:
@@ -206,7 +204,7 @@ class EvaluateLLM:
 
     # 每次调用大模型后,将得分记录到大模型的Response_score中
     def call_llm(self, llm: LLM, parent_score: list[float], score: float):
-        score = max(-500, score)
+        score = max(sample_llm_api_min_score, score)
         # self._maxline = max(score, self._maxline)
         self._response_score[self._llm_list.index(llm)].append((parent_score, score))
         
@@ -241,8 +239,12 @@ class EvaluateLLM:
                     score = 1
                 else:
                     score = (score - min_score) / (max_score - min_score)
-                intensity = math.exp(c_1 * (score - 1))
-                # intensity = score
+                if config_type == 'bin_packing':
+                    intensity = math.exp(c_1 * (score - 1))
+                elif config_type == 'cap_set':
+                    intensity = 1 - math.exp(c_1 * -score)
+                else:
+                    raise Exception('wrong type')
                 return intensity
                 
             benefit_list = []
@@ -277,11 +279,6 @@ class EvaluateLLM:
             benefit_list = [x if x is not None else max_benefit for x in benefit_list]
             probabilities = sample_iterator.softmax(benefit_list, temperature)
             index = np.random.choice(len(self._llm_list), p=probabilities)
-        res = copy.deepcopy(self._response_score)
-        llm_sample_list.append((res, benefit_list_origin, benefit_list, probabilities, index))
-        llm_sample_file = f'{log_dir}/llm_sample.pkl'
-        with open(llm_sample_file, 'wb') as f:
-            pickle.dump(llm_sample_list, f)
         return self._llm_list[index]
 
 

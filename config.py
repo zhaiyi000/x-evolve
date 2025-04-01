@@ -20,6 +20,8 @@ if config_type == 'bin_packing':
     sample_iterator_temperature = 1
     sample_iterator_no_update_cnt = 3
 
+    sample_llm_api_min_score = -500
+
 elif config_type == 'cap_set':
     evaluate_function_c_l1 = 0.
     evaluate_function_c_1 = 1
@@ -28,6 +30,8 @@ elif config_type == 'cap_set':
 
     sample_iterator_temperature = 100
     sample_iterator_no_update_cnt = 10
+
+    sample_llm_api_min_score = 256
 
 else:
     raise Exception('wrong type')
