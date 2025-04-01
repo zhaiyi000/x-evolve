@@ -23,12 +23,17 @@ import dataclasses
 import time
 from typing import Any, Tuple, Mapping
 
+import natsort.natsort
 import numpy as np
 import scipy
 
 from implementation import code_manipulation
 from implementation import evaluate_function
 import heapq, queue, math
+from config import log_dir
+import os
+import json
+import natsort, glob
 
 # RZ: I change the original code "tuple[float, ...]" to "Tuple[float, ...]"
 Signature = Tuple[float, ...]
@@ -106,12 +111,23 @@ class ProgramsDatabase:
         self._template: code_manipulation.Program = template
         self._function_to_evolve: str = function_to_evolve
         self._functions_per_prompt: int = 2
-        self._nodes: dict[str, Node] = {}
+        self._nodes: list[Node] = []
         self._best_score: float = -float('inf')
+
+        node_dir = os.path.join(log_dir, 'node')
+        node_files = glob.glob(os.path.join(node_dir, '*.json'))
+        node_files = natsort.natsorted(node_files)
+        for file in node_files:
+            with open(file, 'r') as f:
+                data = json.load(f)
+            program = code_manipulation.Function(**data['program'])
+            node = Node(visit_count=data['visit_count'], score=data['score'], program=program)
+            self._nodes.append(node)
+        print(f'find {len(node_files)} node files')
 
 
     def get_prompt(self) -> Prompt:
-        nodes = list(self._nodes.values())
+        nodes = self._nodes
         score_list = [node.score for node in nodes]
         visit_list = [node.visit_count for node in nodes]
         length_list = [len(str(node.program)) for node in nodes]
@@ -188,14 +204,14 @@ class ProgramsDatabase:
         else:
             raise Exception('unkonw data type')
 
-        key_str = str(program)
-        if key_str in self._nodes:
-            # raise Exception('todo')
-            node = self._nodes[key_str]
-            node.score = max(node.score, score)
-        else:
-            node = Node(visit_count=0, score=score, program=program)
-            self._nodes[key_str] = node
+        node = Node(visit_count=0, score=score, program=program)
+        self._nodes.append(node)
+
+        node_dir = os.path.join(log_dir, 'node')
+        os.makedirs(node_dir, exist_ok=True)
+        node_file = os.path.join(node_dir, f'{len(self._nodes)-1}.json')
+        with open(node_file, 'w') as f:
+            json.dump(dataclasses.asdict(node), f)
 
         if score > self._best_score:
             self._best_score = score

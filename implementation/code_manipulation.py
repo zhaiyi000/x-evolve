@@ -45,7 +45,6 @@ class Function:
     return_type: str | None = None
     docstring: str | None = None
     score: int | None = None  # RZ: add this to record the score of the function.
-    global_sample_nums: int | None = None  # RZ: record the order of the current program in the sequence of samples taken.
     sample_time: float | None = None  # RZ: add this
     evaluate_time: float | None = None  # RZ: add this
     decisions: list[str] = None

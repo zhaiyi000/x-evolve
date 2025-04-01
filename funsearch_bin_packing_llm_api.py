@@ -121,33 +121,6 @@ class LLMAPI(sampler.LLM):
 
     def __init__(self, samples_per_prompt: int, trim=True):
         super().__init__(samples_per_prompt)
-        # additional_prompt = ('Complete a different and more complex Python function. '
-        #                      'Be creative and you can insert multiple if-else and for-loop in the code logic. '
-        #                      'Only output the Python code, no descriptions.')
-#         additional_prompt = \
-# """
-# Complete a different and more complex Python function. Be creative and you can insert multiple if-else and for-loop in the code logic. Evolve a better priority function in two ways:
-#   1. Propose a better strategy for deciding the priority in an online bin-packing problem.
-#   2. Identify places in the code that might offer tuning options. Wherever you see potential tuning parameters, wrap them in a tunable([...]) function call. Do not need the tunable function implementation. For example:
-#     - `if remaining_capacity > tunable([0.2, 0.5]):`
-#     - `sorted(items, key=lambda x: tunable([x.size, x.weight]))`
-# Prioritize strategy evolution first, then parameter tuning.
-# """
-#         additional_prompt = \
-# """
-# Create an improved Python function for online bin-packing that demonstrates:
-# Novel priority strategy: Propose a smarter item-bin matching approach considering both spatial fit and future packing potential
-# Parameter tuning points: Clearly mark tuning parameters using tunable([option1, option2, ...]) wrapper. Example:
-# `if remaining_capacity > tunable([0.2, 0.5]):`
-# `sorted(items, key=lambda x: tunable([x.size, x.weight]))`
-# First focus on strategic innovation, then expose tuning parameters through tunable([option1, option2, ...]) calls. 
-# You should keep implementation practical but non-trivial.
-# Things you should also focus on:
-# 1.You can try a lot of functions and check the answers, however, the final function you provide for me should be the best one.
-# 2.You can merge the strategies of multiple algorithms, and try to improve the performance of the functions you generate by combining the advantages of multiple algorithms.
-# 3.You can break the traditional thinking and try new ideas.That is to say, you can try any possible methods as long as they are correct and reasonable.
-# """
-        
         self._additional_prompt = additional_prompt
         self._trim = trim
 
@@ -263,11 +236,14 @@ if __name__ == '__main__':
     else:
         raise Exception('wrong case')
     global_max_sample_num = 1000  # if it is set to None, funsearch will execute an endless loop
+    
     import shutil, os
     if os.path.exists(log_dir):
-        # input('delete logs folder?')
-        shutil.rmtree(log_dir)
-        # time.sleep(1)
+        y_or_n = input('delete logs folder? [n]')
+        if y_or_n == 'y':
+            print('delete logs folder!')
+            shutil.rmtree(log_dir)
+    
     funsearch.main(
         specification=specification,
         inputs=inputs,

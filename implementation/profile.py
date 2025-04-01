@@ -9,6 +9,7 @@ import logging
 import json
 from implementation import code_manipulation
 from torch.utils.tensorboard import SummaryWriter
+import glob
 
 
 class Profiler:
@@ -30,7 +31,6 @@ class Profiler:
         os.makedirs(self._json_dir, exist_ok=True)
         # self._pkl_dir = pkl_dir
         self._max_log_nums = max_log_nums
-        self._num_samples = 0
         self._cur_best_program_sample_order = None
         self._cur_best_program_score = -99999999
         self._evaluate_success_program_num = 0
@@ -47,9 +47,11 @@ class Profiler:
         self._each_sample_evaluate_failed_program_num = []
         self._each_sample_tot_sample_time = []
         self._each_sample_tot_evaluate_time = []
-        self._log_file = f'{log_dir}/profile.log'
-        if os.path.exists(self._log_file):
-            os.remove(self._log_file)
+        self._log_file = os.path.join(log_dir, 'profile.log')
+
+        sample_files = glob.glob(os.path.join(self._json_dir, '*.json'))
+        print(f'find {len(sample_files)} sample files')
+        self._num_samples = len(sample_files)
 
     def _write_tensorboard(self):
         if not self._log_dir:
@@ -75,17 +77,15 @@ class Profiler:
         )
 
     def _write_json(self, programs: code_manipulation.Function):
-        sample_order = programs.global_sample_nums
-        sample_order = sample_order if sample_order is not None else 0
         function_str = str(programs)
         score = programs.score
         content = {
-            'sample_order': sample_order,
+            'sample_order': self._num_samples,
             'function': function_str,
             'score': score,
             'decisions': programs.decisions
         }
-        path = os.path.join(self._json_dir, f'samples_{sample_order}.json')
+        path = os.path.join(self._json_dir, f'samples_{self._num_samples}.json')
         with open(path, 'w') as json_file:
             json.dump(content, json_file)
 
@@ -93,40 +93,35 @@ class Profiler:
         if self._max_log_nums is not None and self._num_samples >= self._max_log_nums:
             return
 
-        sample_orders: int = programs.global_sample_nums
-        if sample_orders not in self._all_sampled_functions:
-            self._num_samples += 1
-            self._all_sampled_functions[sample_orders] = programs
-            self._record_and_verbose(sample_orders)
-            self._write_tensorboard()
-            self._write_json(programs)
+        self._num_samples += 1
+        self._all_sampled_functions[self._num_samples] = programs
+        self._record_and_verbose(programs)
+        self._write_tensorboard()
+        self._write_json(programs)
 
-    def _record_and_verbose(self, sample_orders: int):
-        function = self._all_sampled_functions[sample_orders]
-        # function_name = function.name
-        # function_body = function.body.strip('\n')
-        function_str = str(function).strip('\n')
-        sample_time = function.sample_time
-        evaluate_time = function.evaluate_time
-        score = function.score
-        # log attributes of the function
+    def _record_and_verbose(self, programs):
+        function_str = str(programs).strip('\n')
+        sample_time = programs.sample_time
+        evaluate_time = programs.evaluate_time
+        score = programs.score
+        # log attributes of the programs
         with open(self._log_file, 'a') as f:
-            f.write(f'================= Evaluated Function =================\n')
+            f.write(f'================= Evaluated Programs =================\n')
             f.write(f'{function_str}\n')
             f.write(f'------------------------------------------------------\n')
             f.write(f'Score        : {str(score)}\n')
             f.write(f'Sample time  : {str(sample_time)}\n')
             f.write(f'Evaluate time: {str(evaluate_time)}\n')
-            f.write(f'Sample orders: {str(sample_orders)}\n')
-            f.write(f'Decisions: {str(function.decisions)}\n')
+            f.write(f'Sample orders: {str(self._num_samples)}\n')
+            f.write(f'Decisions: {str(programs.decisions)}\n')
             f.write(f'======================================================\n\n\n')
 
-        # update best function
-        if function.score is not None and score > self._cur_best_program_score:
+        # update best programs
+        if programs.score is not None and score > self._cur_best_program_score:
             self._cur_best_program_score = score
-            self._cur_best_program_sample_order = sample_orders
+            self._cur_best_program_sample_order = self._num_samples
 
-        # update statistics about function
+        # update statistics about programs
         if score:
             self._evaluate_success_program_num += 1
         else:
@@ -138,11 +133,8 @@ class Profiler:
             self._tot_evaluate_time += evaluate_time
 
     
-    def register_function_list(self, global_sample_nums_list, sample_template, sample_time, evaluate_time, score_list, decisions_list):
-        if global_sample_nums_list is None:
-            global_sample_nums_list = [None] * len(score_list)
-        for score, global_sample_nums, decisions in zip(score_list, global_sample_nums_list, decisions_list):
-            sample_template.global_sample_nums = global_sample_nums
+    def register_function_list(self, sample_template, sample_time, evaluate_time, score_list, decisions_list):
+        for score, decisions in zip(score_list, decisions_list):
             sample_template.score = score
             sample_template.sample_time = sample_time
             sample_template.evaluate_time = evaluate_time

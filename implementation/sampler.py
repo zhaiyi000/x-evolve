@@ -173,12 +173,6 @@ class Sampler:
             while True:
                 with self._mux_sem:
                     indices = tune_sampler.batch_sample(batch_size=batch_size)
-
-                    global_sample_nums_list = []
-                    for _ in indices:
-                        self._global_sample_nums_plus_one()  # RZ: add _global_sample_nums
-                        cur_global_sample_nums = self._get_global_sample_nums()
-                        global_sample_nums_list.append(cur_global_sample_nums)
                 
                 res_data, timeout = self._evaluator.analyse(tune_sampler, indices)
                 if timeout:
@@ -187,7 +181,7 @@ class Sampler:
                 new_function_list, evaluate_time, score_list, decisions_list = res_data
                 
                 with self._mux_sem:
-                    profiler.register_function_list(global_sample_nums_list, new_function_list, sample_time, evaluate_time, score_list, decisions_list)
+                    profiler.register_function_list(new_function_list, sample_time, evaluate_time, score_list, decisions_list)
                     max_score = max([max_score, *[x for x in score_list if x]])
                     
                     if tune_sampler.update_score(indices, score_list) is False:
@@ -206,16 +200,6 @@ class Sampler:
                         max_score,
                     )
                 llm.call_llm(llm_ins, parent_score, max_score)
-
-
-    def _get_global_sample_nums(self) -> int:
-        return self.__class__._global_samples_nums
-
-    def set_global_sample_nums(self, num):
-        self.__class__._global_samples_nums = num
-
-    def _global_sample_nums_plus_one(self):
-        self.__class__._global_samples_nums += 1
 
 
     def _get_global_spaces_nums(self) -> int:
