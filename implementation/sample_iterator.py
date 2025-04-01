@@ -32,10 +32,7 @@ SPLIT_CHAR = ','
 
 def parse_tunables_with_comments(source_code):
     """解析源代码并保留注释/格式，找出tunable参数"""
-    # 大模型返回的程序源代码
-    with open('orginal_code.log','a+') as file:
-        file.write(source_code)
-        file.write('\n')
+    
     module = cst.parse_module(source_code)
     tunables = []
     tunables_all = []
@@ -89,7 +86,10 @@ class SampleIterator:
         if 'def priority' in code:
             self._code = code
         else:
-            self._code = 'def priority(item: float, bins: np.ndarray) -> np.ndarray:' + '\n' + code
+            if config_type == 'bin_packing':
+                self._code = 'def priority(item: float, bins: np.ndarray) -> np.ndarray:' + '\n' + code
+            if config_type == 'cap_set':
+                self._code = 'def priority(el: tuple[int, ...]) -> float:' + '\n' +code
         # self._regular = SAMPLE_REGULAR
         # self._split = SPLIT_CHAR
         self._temperature = 1
