@@ -29,7 +29,7 @@ elif config_type == 'cap_set':
     evaluate_function_mask_half = True
 
     sample_iterator_temperature = 100
-    sample_iterator_no_update_cnt = 10
+    sample_iterator_no_update_cnt = 5
 
     sample_llm_api_min_score = 256
 
@@ -125,12 +125,12 @@ elif config_type == 'cap_set':
     
     additional_prompt = \
 """
-Create an improved Python function for constructing 8-dimensional cap sets that demonstrates:
+Create an improved priority function for constructing 8-dimensional cap sets that demonstrates:
 Novel vector priority strategy: Design a smarter vector selection strategy.
 Parameter tuning points: Mark adjustable parameters using tunable([option1, option2, ...]) wrapper. Examples:
 `if axis_balance_weight = tunable([0.1, 0.3, 0.5])`
 `sorted(elements, key=lambda x: tunable([x.diversity, x.centrality]))`
-Focus first on innovative vector selection heuristics, then expose tuning parameters via `tunable()`. Keep implementation practical but non-trivial. 
+Focus first on innovative vector selection heuristics, then expose tuning parameters via `tunable()`.
 
 Note:
 1. Do not generate the `tunable()` function implementation.

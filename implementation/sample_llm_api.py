@@ -171,7 +171,7 @@ llm_list = [
         llm_name="Qwen2.5-72B-Instruct",
         api_key=open_key,
         model="qwen/qwen-2.5-72b-instruct",
-        provider="Nebius",
+        provider="DeepInfra",
         request_http = open_http,
         input_price=0.13 * rate,
         output_price=0.4 * rate,
@@ -305,6 +305,9 @@ def get_gemini_20() -> LLM:
     return get_llm("Gemini-2.0-flash-001")
 
 
+def get_qwen_72b() -> LLM:
+    return get_llm("Qwen2.5-72B-Instruct")
+
 def get_random_model() -> LLM:
     return llm_list[np.random.choice(len(llm_list), size=1)[0]]
 
@@ -318,4 +321,7 @@ def get_random_gemini20_deepseekv3_qwen32b() -> LLM:
     local_llm_list = [get_gemini_20(), get_deepseek_v3(), get_qwen_32b()]
     return local_llm_list[np.random.choice(len(local_llm_list), size=1)[0]]
 
+def get_random_gemini20_qwen72b_qwen32b() -> LLM:
+    local_llm_list = [get_gemini_20(), get_qwen_72b(), get_qwen_32b()]
+    return local_llm_list[np.random.choice(len(local_llm_list), size=1)[0]]
     
