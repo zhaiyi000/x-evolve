@@ -53,12 +53,27 @@ def _trim_preface_of_body(sample: str) -> str:
         line = lines[lineno]
         # find the first 'def' statement in the given code
         if line.startswith(start_str):
-            func_body_lineno = lineno
+            func_body_lineno = lineno + 1
             find_def_declaration = True
             break
     if find_def_declaration:
         code = ''
-        for line in lines[func_body_lineno + 1:]:
+
+        comment_symbol = None
+        line = lines[func_body_lineno].strip()
+        if line.startswith("'''"):
+            comment_symbol = "'''"
+        elif line.startswith('"""'):
+            comment_symbol = '"""'
+        
+        if comment_symbol:
+            while True:
+                line = lines[func_body_lineno].strip()
+                func_body_lineno += 1
+                if line.endswith(comment_symbol):
+                    break
+            
+        for line in lines[func_body_lineno:]:
             code += line + '\n'
             if line.startswith(end_str):
                 break
