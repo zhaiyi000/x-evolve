@@ -20,7 +20,8 @@ def cal_intensity(c_1, t_init):
     if config_type == 'bin_packing':
         return 1 - math.exp(c_1 * (t_init - 1))
     elif config_type == 'cap_set':
-        return math.exp(c_1 * -t_init) - math.exp(c_1 * -1)
+        # return math.exp(c_1 * -t_init) - math.exp(c_1 * -1)
+        return 1 - t_init
     else:
         raise Exception('wrong type')
 
