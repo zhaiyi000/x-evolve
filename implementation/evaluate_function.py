@@ -60,7 +60,7 @@ def calculate_score(score_list: list, visit_list: list, length_list: list):
     C_l1: 超参数C_l1,f(l)的系数部分,初始为0.1
     C_l2: 超参数C_l2,f(l)的指数部分,初始为3
     '''
-    c_v1 = 0.1
+    c_v1 = evaluate_function_c_v1
     c_v2 = 3
     c_l1 = evaluate_function_c_l1
     c_l2 = 3

@@ -12,6 +12,7 @@ if config_type not in ['bin_packing', 'cap_set']:
 
 
 if config_type == 'bin_packing':
+    evaluate_function_c_v1 = 0.1
     evaluate_function_c_l1 = 0.1
     evaluate_function_c_1 = 100
     evaluate_function_temperature = 0.1
@@ -23,6 +24,7 @@ if config_type == 'bin_packing':
     sample_llm_api_min_score = -500
 
 elif config_type == 'cap_set':
+    evaluate_function_c_v1 = 0.
     evaluate_function_c_l1 = 0.
     evaluate_function_c_1 = 1
     evaluate_function_temperature = 10

@@ -17,8 +17,8 @@ class Node:
 
 
 
-source_dirs = ['log_loop2_model1', 'log_loop2_model2', 'log_loop2_model3']
-target_dirs = ['log_loop3_model1_test']
+source_dirs = ['496/log_loop1_model3_2', '496/log_loop1_model3_4', '496/log_loop1_model3_8']
+target_dirs = ['496_merge']
 
 
 data_list_list = []
@@ -87,8 +87,10 @@ assert len(data_list) == sum(len(x) for dic in data_dic_list for x in dic.values
 
 
 total_cnt = len(data_list)
-keep_cnt = math.ceil(total_cnt * 0.15)
-one_percent = math.ceil(total_cnt * 0.01)
+# keep_cnt = math.ceil(total_cnt * 0.15)
+# one_percent = math.ceil(total_cnt * 0.01)
+keep_cnt = total_cnt
+one_percent = total_cnt
 print('total_cnt', total_cnt)
 print('repeat_cnt', repeat_cnt)
 print('keep_cnt', keep_cnt)

@@ -112,7 +112,7 @@ def request(llm_ins: sample_llm_api.LLM, prompt: str):
             response = requests.post(llm_ins.request_http, headers=headers, json=json_data)
 
             if response.status_code != 200:
-                print('response.status_code', response.status_code, response.text)
+                print('response.status_code', llm_ins.model, response.status_code, response.text)
                 raise Exception('request net error')
 
             data = json.loads(response.text)
@@ -250,7 +250,7 @@ if __name__ == '__main__':
         inputs = {'8': 8}
     else:
         raise Exception('wrong case')
-    global_max_sample_num = 1000  # if it is set to None, funsearch will execute an endless loop
+    global_max_sample_num = 2000  # if it is set to None, funsearch will execute an endless loop
     
     import shutil, os
     if os.path.exists(log_dir):
