@@ -165,6 +165,22 @@ class LLMAPI(sampler.LLM):
         return response_list
 
 
+import sys
+import os
+class HideOutput:
+    """上下文管理器，用于抑制标准输出和标准错误"""
+    def __enter__(self):
+        self._original_stdout = sys.stdout
+        self._original_stderr = sys.stderr
+        sys.stdout = open(os.devnull, 'w')
+        sys.stderr = open(os.devnull, 'w')
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        sys.stdout.close()
+        sys.stderr.close()
+        sys.stdout = self._original_stdout
+        sys.stderr = self._original_stderr
+
+
 def _compile_and_run_function(program, function_to_run, function_to_evolve, dataset, numba_accelerate):
     try:
         # optimize the code (decorate function_to_run with @numba.jit())
@@ -176,11 +192,12 @@ def _compile_and_run_function(program, function_to_run, function_to_evolve, data
         # compile the program, and maps the global func/var/class name to its address
         all_globals_namespace = {}
         # execute the program, map func/var/class to global namespace
-        exec(program, all_globals_namespace)
-        # get the pointer of 'function_to_run'
-        function_to_run = all_globals_namespace[function_to_run]
-        # return the execution results
-        results = function_to_run(dataset)
+        with HideOutput():
+            exec(program, all_globals_namespace)
+            # get the pointer of 'function_to_run'
+            function_to_run = all_globals_namespace[function_to_run]
+            # return the execution results
+            results = function_to_run(dataset)
         # the results must be int or float
         if not isinstance(results, (int, float)):
             return None, False
