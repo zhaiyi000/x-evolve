@@ -32,15 +32,6 @@ class LLM:
 
 llm_list = [
     # LLM(
-    #     llm_name="DeepSeek-R1",
-    #     api_key=byte_key,
-    #     model="ep-20250303202036-j6hfh",
-    #     provider=None,
-    #     request_http = byte_http,
-    #     input_price=4.0,
-    #     output_price=16.0,
-    # ),
-    # LLM(
     #     llm_name="DeepSeek-V3", 
     #     api_key=byte_key, 
     #     model="ep-20250331155118-wgw4n", 
@@ -58,23 +49,14 @@ llm_list = [
     #     input_price=0.6,
     #     output_price=2.4,
     # ),
-    LLM(
-        llm_name="DeepSeek-R1-distill-qwen-32b",
-        api_key=byte_key,
-        model="ep-20250305162537-2sbpv",
-        provider=None,
-        request_http = byte_http,
-        input_price=1.5,
-        output_price=6.0,
-    ),
     # LLM(
-    #     llm_name="GPT-4o",
-    #     api_key=open_key,
-    #     model="openai/gpt-4o-2024-11-20",
-    #     provider="OpenAI",
-    #     request_http = open_http,
-    #     input_price=2.5 * rate,
-    #     output_price=10 * rate,
+    #     llm_name="DeepSeek-R1-distill-qwen-32b",
+    #     api_key=byte_key,
+    #     model="ep-20250305162537-2sbpv",
+    #     provider=None,
+    #     request_http = byte_http,
+    #     input_price=1.5,
+    #     output_price=6.0,
     # ),
     # LLM(
     #     llm_name="GPT-4o-mini",
@@ -85,51 +67,6 @@ llm_list = [
     #     input_price=0.15 * rate,
     #     output_price=0.6 * rate,
     # ),
-    # LLM(
-    #     llm_name="GPT-o1-mini",
-    #     api_key=open_key,
-    #     model="openai/o1-mini",
-    #     provider="OpenAI",
-    #     request_http = open_http,
-    #     input_price=1.1 * rate,
-    #     output_price=4.4 * rate,
-    # ),
-    # LLM(
-    #     llm_name="GPT-o3-mini",
-    #     api_key=open_key,
-    #     model="openai/o3-mini",
-    #     provider="OpenAI",
-    #     request_http = open_http,
-    #     input_price=1.1 * rate,
-    #     output_price=4.4 * rate,
-    # ),
-    # LLM(
-    #     llm_name="GPT-o3-mini-high",
-    #     api_key=open_key,
-    #     model="openai/o3-mini-high",
-    #     provider="OpenAI",
-    #     request_http = open_http,
-    #     input_price=1.1 * rate,
-    #     output_price=4.4 * rate,
-    # ),
-    # LLM(
-    #     llm_name="Claude-3.7-sonnet",
-    #     api_key=open_key,
-    #     model="anthropic/claude-3.7-sonnet",
-    #     provider="Anthropic",
-    #     request_http = open_http,
-    #     input_price=3 * rate,
-    #     output_price=15 * rate,
-    # ),
-    # LLM(
-    #     llm_name="Claude-3.7-Sonnet-thinking",
-    #     api_key=open_key,
-    #     model="anthropic/claude-3.7-sonnet:thinking",
-    #     provider="Google",
-    #     request_http = open_http,
-    #     input_price=3 * rate,
-    #     output_price=15 * rate,
-    # ),
     LLM(
         llm_name="Gemini-2.0-flash-001",
         api_key=open_key,
@@ -139,43 +76,15 @@ llm_list = [
         input_price=0.1 * rate,
         output_price=0.4 * rate,
     ),
-    # LLM(
-    #     llm_name="Mistral-Codestral-2501",
-    #     api_key=open_key,
-    #     model="mistralai/codestral-2501",
-    #     provider="Mistral",
-    #     request_http = open_http,
-    #     input_price=0.3 * rate,
-    #     output_price=0.9 * rate,
-    # ),
-    # LLM(
-    #     llm_name="Gemini-2.0-pro-exp-02-05",
-    #     api_key=open_key,
-    #     model="google/gemini-2.0-pro-exp-02-05:free",
-    #     provider="Google AI Studio",
-    #     request_http = open_http,
-    #     input_price=0.0 * rate,
-    #     output_price=0.0 * rate,
-    # ),
-    # LLM(
-    #     llm_name="Gemini-2.0-flash-thinking-exp",
-    #     api_key=open_key,
-    #     model="google/gemini-2.0-flash-thinking-exp:free",
-    #     provider="Google AI Studio",
-    #     request_http = open_http,
-    #     input_price=0.0 * rate,
-    #     output_price=0.0 * rate,
-    # ),
-    # LLM(
-    #     llm_name="Grok-beta",
-    #     api_key=open_key,
-    #     model="x-ai/grok-beta",
-    #     provider="xAI",
-    #     request_http = open_http,
-    #     input_price=5 * rate,
-    #     output_price=15 * rate,
-    # ),
-
+    LLM(
+        llm_name="Mistral-Codestral-2501",
+        api_key=open_key,
+        model="mistralai/codestral-2501",
+        provider="Mistral",
+        request_http = open_http,
+        input_price=0.3 * rate,
+        output_price=0.9 * rate,
+    ),
     LLM(
         llm_name="Qwen2.5-72B-Instruct",
         api_key=open_key,
@@ -212,24 +121,15 @@ llm_list = [
     #     input_price=0.12 * rate,
     #     output_price=0.3 * rate,
     # ),
-    # LLM(
-    #     llm_name="ali-qwq-plus",
-    #     api_key=ali_key,
-    #     model="qwq-plus",
-    #     provider=None,
-    #     request_http = ali_http,
-    #     input_price=1.6,
-    #     output_price=4,
-    # ),
-    # LLM(
-    #     llm_name="ali-qwen-max",
-    #     api_key=ali_key,
-    #     model="qwen-max",
-    #     provider=None,
-    #     request_http = ali_http,
-    #     input_price=2.4,
-    #     output_price=9.6,
-    # ),
+    LLM(
+        llm_name="ali-qwen-max",
+        api_key=ali_key,
+        model="qwen-max",
+        provider=None,
+        request_http = ali_http,
+        input_price=2.4,
+        output_price=9.6,
+    ),
     # LLM(
     #     llm_name="ali-qwen-plus",
     #     api_key=ali_key,
@@ -238,15 +138,6 @@ llm_list = [
     #     request_http = ali_http,
     #     input_price=0.8,
     #     output_price=2,
-    # ),
-    # LLM(
-    #     llm_name="ali-qwq-32b",
-    #     api_key=ali_key,
-    #     model="qwq-32b",
-    #     provider=None,
-    #     request_http = ali_http,
-    #     input_price=2,
-    #     output_price=6,
     # ),
     # LLM(
     #     llm_name="ali-qwen-coder-plus",
@@ -265,15 +156,6 @@ llm_list = [
     #     request_http = ali_http,
     #     input_price=2,
     #     output_price=6,
-    # ),
-    # LLM(
-    #     llm_name="ali-qwen2.5-72b-instruct",
-    #     api_key=ali_key,
-    #     model="qwen2.5-72b-instruct",
-    #     provider=None,
-    #     request_http = ali_http,
-    #     input_price=4,
-    #     output_price=12,
     # ),
     # LLM(
     #     llm_name="ali-qwen2.5-coder-32b-instruct",
@@ -413,6 +295,12 @@ def get_gemini_20() -> LLM:
     return get_llm("Gemini-2.0-flash-001")
 
 
+def get_mistral() -> LLM:
+    return get_llm("Mistral-Codestral-2501")
+
+    
+
+
 def get_qwen_72b() -> LLM:
     return get_llm("Qwen2.5-72B-Instruct")
 
@@ -444,3 +332,105 @@ def get_random_gemini20_qwen72b_qwen32b_llama70b() -> LLM:
     return local_llm_list[np.random.choice(len(local_llm_list), size=1)[0]]
 
     
+    # LLM(
+    #     llm_name="DeepSeek-R1",
+    #     api_key=byte_key,
+    #     model="ep-20250303202036-j6hfh",
+    #     provider=None,
+    #     request_http = byte_http,
+    #     input_price=4.0,
+    #     output_price=16.0,
+    # ),
+
+    # LLM(
+    #     llm_name="GPT-4o",
+    #     api_key=open_key,
+    #     model="openai/gpt-4o-2024-11-20",
+    #     provider="OpenAI",
+    #     request_http = open_http,
+    #     input_price=2.5 * rate,
+    #     output_price=10 * rate,
+    # ),
+
+    # LLM(
+    #     llm_name="GPT-o1-mini",
+    #     api_key=open_key,
+    #     model="openai/o1-mini",
+    #     provider="OpenAI",
+    #     request_http = open_http,
+    #     input_price=1.1 * rate,
+    #     output_price=4.4 * rate,
+    # ),
+    # LLM(
+    #     llm_name="GPT-o3-mini",
+    #     api_key=open_key,
+    #     model="openai/o3-mini",
+    #     provider="OpenAI",
+    #     request_http = open_http,
+    #     input_price=1.1 * rate,
+    #     output_price=4.4 * rate,
+    # ),
+    # LLM(
+    #     llm_name="GPT-o3-mini-high",
+    #     api_key=open_key,
+    #     model="openai/o3-mini-high",
+    #     provider="OpenAI",
+    #     request_http = open_http,
+    #     input_price=1.1 * rate,
+    #     output_price=4.4 * rate,
+    # ),
+    # LLM(
+    #     llm_name="Claude-3.7-sonnet",
+    #     api_key=open_key,
+    #     model="anthropic/claude-3.7-sonnet",
+    #     provider="Anthropic",
+    #     request_http = open_http,
+    #     input_price=3 * rate,
+    #     output_price=15 * rate,
+    # ),
+    # LLM(
+    #     llm_name="Claude-3.7-Sonnet-thinking",
+    #     api_key=open_key,
+    #     model="anthropic/claude-3.7-sonnet:thinking",
+    #     provider="Google",
+    #     request_http = open_http,
+    #     input_price=3 * rate,
+    #     output_price=15 * rate,
+    # ),
+
+    # LLM(
+    #     llm_name="Grok-beta",
+    #     api_key=open_key,
+    #     model="x-ai/grok-beta",
+    #     provider="xAI",
+    #     request_http = open_http,
+    #     input_price=5 * rate,
+    #     output_price=15 * rate,
+    # ),
+
+
+
+
+
+
+
+
+
+    # LLM(
+    #     llm_name="Gemini-2.0-pro-exp-02-05",
+    #     api_key=open_key,
+    #     model="google/gemini-2.0-pro-exp-02-05:free",
+    #     provider="Google AI Studio",
+    #     request_http = open_http,
+    #     input_price=0.0 * rate,
+    #     output_price=0.0 * rate,
+    # ),
+    # LLM(
+    #     llm_name="Gemini-2.0-flash-thinking-exp",
+    #     api_key=open_key,
+    #     model="google/gemini-2.0-flash-thinking-exp:free",
+    #     provider="Google AI Studio",
+    #     request_http = open_http,
+    #     input_price=0.0 * rate,
+    #     output_price=0.0 * rate,
+    # ),

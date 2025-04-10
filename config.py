@@ -52,8 +52,7 @@ Parameter tuning points: Clearly mark tuning parameters using tunable([option1, 
 Focus first on strategic innovation, then expose tuning parameters through tunable([option1, option2, ...]) calls. Keep implementation practical but non-trivial.
 """
 
-    specification = r'''
-import numpy as np
+    specification = r'''import numpy as np
 
 
 def get_valid_bin_indices(item: float, bins: np.ndarray) -> np.ndarray:
@@ -127,21 +126,42 @@ elif config_type == 'cap_set':
     
     additional_prompt = \
 """
-Create an improved priority function for constructing 8-dimensional cap sets that demonstrates:
-Novel vector priority strategy: Design a smarter vector selection strategy.
-Parameter tuning points: Mark adjustable parameters using tunable([option1, option2, ...]) wrapper. Examples:
-`if axis_balance_weight = tunable([0.1, 0.3, 0.5])`
-`sorted(elements, key=lambda x: tunable([x.diversity, x.centrality]))`
-Focus first on innovative vector selection heuristics, then expose tuning parameters via `tunable()`.
+I'm working on the 8-dimensional cap set problem using a greedy algorithm with a priority function to determine vector selection order. Please help me develop a smarter `priority_v2` function by analyzing my reference implementations.
 
-Note:
-1. Do not generate the `tunable()` function implementation.
-2. Any helper functions should be defined within the priority function.
+
+## What I Need
+1. **BOLD EVOLUTION OF PRIORITY FUNCTION**: Please create a novel priority function variant that might outperform my reference implementations. Don't be constrained by my current approaches - take risks and suggest radically different strategies that might lead to breakthroughs.
+2. **MARK ALL TUNABLE PARAMETERS**: For every single element that could potentially be tuned (no matter how minor), mark it with tunable([option1, option2, ...]) wrapper. 
+  This includes but is not limited to:
+    - Parameters and constants
+    - Weighting factors
+    - Thresholds
+    - Logical conditions
+    - Calculation methods
+    - Function selection options
+    - Algorithm hyperparameters
+    - Anything else that might impact priority
+  Format examples:
+    - `if x == tunable([number_1, number_2, number_3])`
+    - `sorted(elements, key=lambda x: tunable([x.property_1, x.property_2]))`
+
+**My primary focus is on the conceptual innovation of the priority function itself.** While accurately marking tunable parameters is essential, please dedicate your main effort to designing the *core logic* of a potentially superior function first.
+
+
+## Task Description
+Please provide a Python function `priority_v2(el: tuple[int, ...]) -> float` that:
+1. Takes an 8-dimensional vector (with elements in {0,1,2})
+2. Returns a priority score - higher scores indicate the vector should be considered earlier for addition to the Cap Set
+3. Any helper functions should be defined within the `priority_v2` function
+
+
+## Current Priority Functions
+Below are two reference priority functions I've developed.
 """
 
-    specification = r'''
-import numpy as np
+    specification = r'''import numpy as np
 import itertools
+import math
 from typing import List, Tuple
 
 

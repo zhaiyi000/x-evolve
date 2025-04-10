@@ -132,8 +132,9 @@ def main():
     score_list, visit_list, length_list, function_list, max_score, visited_decisions = get_data()
 
     while True:
-        prob = evaluate_function.calculate_score(score_list, visit_list, length_list)
-        indices = np.random.choice(len(function_list), size=64, replace=True, p=prob)
+        # prob = evaluate_function.calculate_score(score_list, visit_list, length_list)
+        # indices = np.random.choice(len(function_list), size=64, replace=True, p=prob)
+        indices = evaluate_function.calculate_score(score_list, size=64, replace=True)
         prompts = [function_list[idx] for idx in indices]
         features = tokenizer(prompts)
 
