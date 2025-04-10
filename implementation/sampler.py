@@ -114,7 +114,7 @@ class Sampler:
                     prompt, parent_score = self._database.get_prompt()
                     llm_ins = llm.calculate_probability()
                 reset_time = time.time()
-                samples = self._llm.draw_samples(llm_ins, prompt.code)
+                samples = self._llm.draw_samples(llm_ins, prompt.code, str(parent_score))
                 sample_time = (time.time() - reset_time) / self._samples_per_prompt
                 self._queue.put((samples, sample_time, llm_ins, parent_score))
             except Exception as err:
@@ -185,12 +185,12 @@ class Sampler:
                     max_score = max([max_score, *[x for x in score_list if x]])
                     
                     if tune_sampler.update_score(indices, score_list) is False:
-                        print('sampler suggest should end sample, break', llm_ins.llm_name)
+                        print('sampler suggest should end sample, break', llm_name)
                         break
 
             with self._mux_sem:
                 print(f'\n\n\n-- {parent_score} -- {llm_name} ----end-----------')
-                if max_score != MIN_SCORE and max_score > max(parent_score):
+                if max_score != MIN_SCORE: # and max_score > max(parent_score):
                     print('register to database')
                     function_code = tune_sampler.get_final_code()
                     new_function, _ = evaluator._sample_to_program(

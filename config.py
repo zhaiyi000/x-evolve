@@ -1,13 +1,13 @@
 import os
 
 
-config_type = 'cap_set'
+config_type = 'cycle_graphs'
 log_dir = os.environ.get('LOG_DIR', 'logs')
 sample_llm_cnt = 10
 
 
 
-if config_type not in ['bin_packing', 'cap_set']:
+if config_type not in ['bin_packing', 'cap_set', 'cycle_graphs']:
     raise Exception('wrong type')
 
 
@@ -34,6 +34,18 @@ elif config_type == 'cap_set':
     sample_iterator_no_update_cnt = 5
 
     sample_llm_api_min_score = 256
+
+elif config_type == 'cycle_graphs':
+    evaluate_function_c_v1 = 0.1
+    evaluate_function_c_l1 = 0.1
+    evaluate_function_c_1 = 10
+    evaluate_function_temperature = 1
+    evaluate_function_mask_half = True
+
+    sample_iterator_temperature = 100
+    sample_iterator_no_update_cnt = 5
+
+    sample_llm_api_min_score = 200
 
 else:
     raise Exception('wrong type')
@@ -191,4 +203,101 @@ def priority(el: tuple[int, ...]) -> float:
     """
     n = 8
     return 0.0
+'''
+
+elif config_type == 'cycle_graphs':
+
+    additional_prompt = \
+"""
+Create an improved priority function for maximum independent set problem in multi-dimensional torus graphs which will be used by a greedy algorithm with a priority function to determine vertex selection order, the priority function demonstrates:
+Novel priority strategy: Design a smarter vector selection strategy considering both spatial fit and future potential.
+
+Parameter tuning points marked with tunable():
+ For every single element that could potentially be tuned (no matter how minor), mark it with tunable([option1, option2, ...]) wrapper. 
+  This includes but is not limited to:
+    - Parameters and constants
+    - Weighting factors
+    - Thresholds
+    - Logical conditions
+    - Calculation methods
+    - Function selection options
+    - Algorithm hyperparameters
+    - Anything else that might impact priority
+  Format examples:
+    - `if x == tunable([number_1, number_2, number_3])`
+    - `sorted(elements, key=lambda x: tunable([x.property_1, x.property_2]))`
+
+Focus first on strategic innovation, then expose tuning parameters through tunable([option1, option2, ...]) calls. Keep implementation practical but non-trivial.
+Please provide the Python function `priority_v2(el: tuple[int, ...], num_nodes: int, n: int) -> float` that:
+1. Takes an n-dimensional vector (with elements in {0, 1, ..., m-1}) representing a vertex in the multi-dimensional torus graph.
+2. Returns a priority score - higher scores indicate the vector should be considered earlier for addition to the indepentent set
+3. Any helper functions should be defined within the `priority_v2` function
+## Current Priority Functions
+Below are two or one reference priority functions I've developed and the num of vectexs they can select out.
+"""
+
+    specification = r'''
+import itertools
+import numpy as np
+
+
+@funsearch.run
+def evaluate(params: dict) -> int:
+    """Returns the size of an independent set."""
+    independent_set = solve(params['num_nodes'], params['n'])
+    return len(independent_set)
+
+
+def solve(num_nodes: int, n: int) -> list[tuple[int, ...]]:
+    """Gets independent set with maximal size.
+
+    Args:
+        num_nodes: The number of nodes of the base cyclic graph.
+        n: The power we raise the graph to.
+
+    Returns:
+        A list of `n`-tuples in `{0, 1, 2, ..., num_nodes - 1}`.
+    """
+    to_block = np.array(list(itertools.product([-1, 0, 1], repeat=n)))
+
+    # Powers in decreasing order for compatibility with `itertools.product`, so
+    # that the relationship `i = children[i] @ powers` holds for all `i`.
+    powers = num_nodes ** np.arange(n - 1, -1, -1)
+
+    # Precompute the priority scores.
+    children = np.array(
+        list(itertools.product(range(num_nodes), repeat=n)), dtype=np.int32)
+    scores = np.array([priority(tuple(child), num_nodes, n)
+                        for child in children])
+
+    # Build `max_set` greedily, using scores for prioritization.
+    max_set = np.empty(shape=(0, n), dtype=np.int32)
+    while np.any(scores != -np.inf):
+        # Add a child with a maximum score to `max_set`, and set scores of
+        # invalidated children to -inf, so that they never get selected.
+        max_index = np.argmax(scores)
+        child = children[None, max_index]  # [1, n]
+
+        blocking = np.einsum(
+            'cn,n->c', (to_block + child) % num_nodes, powers)  # [C]
+        scores[blocking] = -np.inf
+        max_set = np.concatenate([max_set, child], axis=0)
+
+    return [tuple(map(int, el)) for el in max_set]
+
+
+@funsearch.evolve
+def priority(el: tuple[int, ...], num_nodes: int, n: int) -> float:
+    """Returns the priority with which we want to add `el` to the set.
+
+    Args:
+        el: an n-tuple representing the element to consider whether to add.
+        num_nodes: the number of nodes of the base graph.
+        n: an integer, power of the graph.
+
+    Returns:
+        A number reflecting the priority with which we want to add `el` to the
+        independent set.
+    """
+    return 0.
 '''

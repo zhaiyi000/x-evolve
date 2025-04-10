@@ -9,6 +9,7 @@ from implementation import evaluator
 from implementation import code_manipulation
 from implementation import sample_llm_api
 from bin_packing import bin_packing_utils
+from cycle_graphs import cycle_graphs_utils
 
 import json
 import multiprocessing
@@ -22,6 +23,7 @@ import re
 import gc
 import os
 from config import config_type, log_dir, additional_prompt, specification
+import random
 
 
 def _trim_preface_of_body(sample: str) -> str:
@@ -67,6 +69,8 @@ def _trim_preface_of_body(sample: str) -> str:
             comment_symbol = '"""'
         
         if comment_symbol:
+            if line == comment_symbol:
+                func_body_lineno += 1
             while True:
                 line = lines[func_body_lineno].strip()
                 func_body_lineno += 1
@@ -87,6 +91,7 @@ def request(llm_ins: sample_llm_api.LLM, prompt: str):
             headers = {
                 'Authorization': llm_ins.api_key,
             }
+            temperature = random.uniform(0.1, 1.5)
 
             json_data = {
                 'model': llm_ins.model,
@@ -100,6 +105,7 @@ def request(llm_ins: sample_llm_api.LLM, prompt: str):
                         "role": "user"
                     }
                 ],
+                # 'temperature': 0.1
             }
             if llm_ins.provider:
                 json_data['provider'] = {
@@ -122,12 +128,12 @@ def request(llm_ins: sample_llm_api.LLM, prompt: str):
                 raise Exception('not the specific privoder')
             
             response_content = data['choices'][0]['message']['content']
-            return llm_ins.llm_name, prompt, response_content
+            return llm_ins.llm_name+'  '+str(temperature), prompt, response_content
         except Exception as e:
             print(f'errr111__{retry_i}', llm_ins.llm_name, response.text)
             print(e)
             time.sleep(1)
-    return llm_ins.llm_name, prompt, prompt
+    raise Exception('fail 5 times')
 
 
 class LLMAPI(sampler.LLM):
@@ -140,12 +146,14 @@ class LLMAPI(sampler.LLM):
         self._trim = trim
 
 
-    def draw_samples(self, llm_ins: sample_llm_api.LLM, prompt: str) -> Collection[str]:
+    def draw_samples(self, llm_ins: sample_llm_api.LLM, prompt: str, parent_score: str) -> Collection[str]:
         """Returns multiple predicted continuations of `prompt`."""
-        return self._draw_sample(llm_ins, [prompt] * self._samples_per_prompt)
+        add_score_prompt = '\n'.join([parent_score, prompt])
+        print(add_score_prompt)
+        return self._draw_sample(llm_ins, [add_score_prompt] * self._samples_per_prompt)
 
     def _draw_sample(self, llm_ins: sample_llm_api.LLM, content_list: list) -> str:
-        prompt_list = ['\n'.join([content, self._additional_prompt]) for content in content_list]
+        prompt_list = [self._additional_prompt + '```python\n' + content + '```' for content in content_list]
         futures = [request(llm_ins, prompt) for prompt in prompt_list]
         response_list = []
         for future in futures:
@@ -227,7 +235,7 @@ class Sandbox(evaluator.Sandbox):
         result_list = []
         for future in futures:
             try:
-                result = future.result(timeout=15)
+                result = future.result(timeout=90)
                 result_list.append(result)
             except TimeoutError:
                 for pid in self.executor._processes:  # 访问内部进程PID
@@ -248,9 +256,11 @@ if __name__ == '__main__':
         inputs = {'OR3': bin_packing_utils.datasets['OR3']}
     elif config_type == 'cap_set':
         inputs = {'8': 8}
+    elif config_type == 'cycle_graphs':
+        inputs = {'7_5': cycle_graphs_utils.datasets['7_5']}
     else:
         raise Exception('wrong case')
-    global_max_sample_num = 2000  # if it is set to None, funsearch will execute an endless loop
+    global_max_sample_num = 1000  # if it is set to None, funsearch will execute an endless loop
     
     import shutil, os
     if os.path.exists(log_dir):

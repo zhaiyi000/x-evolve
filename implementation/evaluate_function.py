@@ -16,12 +16,16 @@ from config import *
 # import pickle
 
 
-def cal_intensity(c_1, t_init):
+def cal_intensity(c_1, t_init, s_max):
     if config_type == 'bin_packing':
-        return 1 - math.exp(c_1 * (t_init - 1))
+        return (1 - math.exp(c_1 * (t_init - 1))) / (1 - math.exp(c_1 * -1))
     elif config_type == 'cap_set':
+        return -t_init + 1
+        # return (1 - math.exp(c_1 * (t_init - 1))) / (1 - math.exp(c_1 * -1))
         # return math.exp(c_1 * -t_init) - math.exp(c_1 * -1)
-        return 1 - t_init
+    elif config_type == 'cycle_graphs':
+        return (1 - math.exp(c_1 * (t_init - 1))) / (1 - math.exp(c_1 * -1))
+        # return -t_init + 1
     else:
         raise Exception('wrong type')
 
@@ -41,15 +45,21 @@ def calculate_score(score_list: list, visit_list: list, length_list: list):
     s_min = min(score_list)
     s_max = max(score_list)
     # dump.append(score_list)
-    mask_ratio = 0.6
-    if s_max == s_min:
-        transformed_initials = np.ones_like(score_list)
+    if evaluate_function_mask_half:
+        mask_ratio = 0.6
+        if s_max == s_min:
+            transformed_initials = np.ones_like(score_list)
+        else:
+            indices = np.random.choice(len(score_list), math.floor(mask_ratio * len(score_list)), replace=False)
+            for idx in indices:
+                score_list[idx] = s_min
+            s_max = max(score_list)
+            # dump.append(score_list)
+            if s_max == s_min:
+                transformed_initials = np.ones_like(score_list)
+            else:
+                transformed_initials = [(s - s_min) / (s_max - s_min) for s in score_list]
     else:
-        indices = np.random.choice(len(score_list), math.floor(mask_ratio * len(score_list)), replace=False)
-        for idx in indices:
-            score_list[idx] = s_min
-        s_max = max(score_list)
-        # dump.append(score_list)
         if s_max == s_min:
             transformed_initials = np.ones_like(score_list)
         else:
@@ -71,7 +81,7 @@ def calculate_score(score_list: list, visit_list: list, length_list: list):
     weights = []
     for score, t_init, visit, length in zip(score_list, transformed_initials, visit_list, length_list):
         # 测试了对于小于长度baseline的序列不加分也不减分的情况，区分度不如都减分的情况
-        intensity = cal_intensity(c_1, t_init)
+        intensity = cal_intensity(c_1, t_init, s_max)
         if len_baseline > 0:
             if length > len_baseline:
                 weight = score - c_v1 * (visit ** c_v2) * intensity - c_l1 * ((length / len_baseline) ** c_l2) * intensity
