@@ -21,7 +21,7 @@ from concurrent.futures import ProcessPoolExecutor, TimeoutError
 import re
 import gc
 import os
-from config import config_type, log_dir, additional_prompt, specification
+from config import config_type, log_dir, additional_prompt, specification, measure_timeout
 import random
 
 
@@ -249,7 +249,7 @@ class Sandbox(evaluator.Sandbox):
         result_list = []
         for future in futures:
             try:
-                result = future.result(timeout=15)
+                result = future.result(timeout=measure_timeout)
                 result_list.append(result)
             except TimeoutError:
                 for pid in self.executor._processes:  # 访问内部进程PID
@@ -269,7 +269,9 @@ if __name__ == '__main__':
     if config_type == 'bin_packing':
         inputs = {'OR3': bin_packing_utils.datasets['OR3']}
     elif config_type == 'cap_set':
-        inputs = {'8': 8}
+        inputs = {'7': 7}
+    elif config_type == 'admissible_set':
+        inputs = {'12_7': {'n': 12, 'w': 7}}
     else:
         raise Exception('wrong case')
     global_max_sample_num = 2000  # if it is set to None, funsearch will execute an endless loop

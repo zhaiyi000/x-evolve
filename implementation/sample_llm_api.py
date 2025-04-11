@@ -233,6 +233,8 @@ class EvaluateLLM:
                     intensity = math.exp(c_1 * (score - 1))
                 elif config_type == 'cap_set':
                     intensity = 1 - math.exp(c_1 * -score)
+                elif config_type == 'admissible_set':
+                    raise Exception('wrong type')
                 else:
                     raise Exception('wrong type')
                 return intensity
