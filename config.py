@@ -209,11 +209,11 @@ elif config_type == 'cycle_graphs':
 
     additional_prompt = \
 """
-Create an improved priority function for maximum independent set problem in multi-dimensional torus graphs which will be used by a greedy algorithm with a priority function to determine vertex selection order, the priority function demonstrates:
-Novel priority strategy: Design a smarter vector selection strategy considering both spatial fit and future potential.
+I'm working on the maximum independent set problem in multi-dimensional cycle graphs using a greedy algorithm with a priority function to determine vertex selection order. Please help me develop a smarter `priority_v2` function by analyzing my reference implementations.
 
-Parameter tuning points marked with tunable():
- For every single element that could potentially be tuned (no matter how minor), mark it with tunable([option1, option2, ...]) wrapper. 
+## What I Need
+1. **BOLD EVOLUTION OF PRIORITY FUNCTION**: Please create a novel priority function variant that might outperform my reference implementations. Don't be constrained by my current approaches - take risks and suggest radically different strategies that might lead to breakthroughs.
+2. **MARK ALL TUNABLE PARAMETERS**: For every single element that could potentially be tuned (no matter how minor), mark it with tunable([option1, option2, ...]) wrapper. 
   This includes but is not limited to:
     - Parameters and constants
     - Weighting factors
@@ -227,11 +227,13 @@ Parameter tuning points marked with tunable():
     - `if x == tunable([number_1, number_2, number_3])`
     - `sorted(elements, key=lambda x: tunable([x.property_1, x.property_2]))`
 
-Focus first on strategic innovation, then expose tuning parameters through tunable([option1, option2, ...]) calls. Keep implementation practical but non-trivial.
-Please provide the Python function `priority_v2(el: tuple[int, ...], num_nodes: int, n: int) -> float` that:
+**My primary focus is on the conceptual innovation of the priority function itself.** While accurately marking tunable parameters is essential, please dedicate your main effort to designing the *core logic* of a potentially superior function first.
+
+## Task Description
+Please provide a Python function `priority_v2(el: tuple[int, ...], num_node: int, n: int) -> float` that:
 1. Takes an n-dimensional vector (with elements in {0, 1, ..., m-1}) representing a vertex in the multi-dimensional torus graph.
 2. Returns a priority score - higher scores indicate the vector should be considered earlier for addition to the indepentent set
-3. Any helper functions should be defined within the `priority_v2` function
+3. Any helper functions and useful variables should be defined within the `priority_v2` function
 ## Current Priority Functions
 Below are two or one reference priority functions I've developed and the num of vectexs they can select out.
 """

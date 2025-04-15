@@ -148,8 +148,7 @@ class LLMAPI(sampler.LLM):
 
     def draw_samples(self, llm_ins: sample_llm_api.LLM, prompt: str, parent_score: str) -> Collection[str]:
         """Returns multiple predicted continuations of `prompt`."""
-        add_score_prompt = '\n'.join([parent_score, prompt])
-        print(add_score_prompt)
+        add_score_prompt = '\n'.join(['The num of vectexs the two or one priority functions can select out' + parent_score, prompt])
         return self._draw_sample(llm_ins, [add_score_prompt] * self._samples_per_prompt)
 
     def _draw_sample(self, llm_ins: sample_llm_api.LLM, content_list: list) -> str:
@@ -260,7 +259,7 @@ if __name__ == '__main__':
         inputs = {'7_5': cycle_graphs_utils.datasets['7_5']}
     else:
         raise Exception('wrong case')
-    global_max_sample_num = 1000  # if it is set to None, funsearch will execute an endless loop
+    global_max_sample_num = 2000  # if it is set to None, funsearch will execute an endless loop
     
     import shutil, os
     if os.path.exists(log_dir):

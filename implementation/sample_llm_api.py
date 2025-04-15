@@ -31,33 +31,33 @@ class LLM:
     output_price: float
 
 llm_list = [
-    LLM(
-        llm_name="DeepSeek-V3-new", 
-        api_key=byte_key, 
-        model="ep-20250331155118-wgw4n", 
-        provider=None, 
-        request_http = byte_http,
-        input_price=2.0,
-        output_price=8.0, 
-    ),
-    LLM(
-        llm_name="DeepSeek-V3-old", 
-        api_key=byte_key, 
-        model="ep-20250227102412-tfkv8", 
-        provider=None, 
-        request_http = byte_http,
-        input_price=2.0,
-        output_price=8.0, 
-    ),
-    LLM(
-        llm_name="Deepseek-R1-distill-qwen-7b",
-        api_key=byte_key,
-        model="ep-20250305162451-qxgns",
-        provider=None,
-        request_http = byte_http,
-        input_price=0.6,
-        output_price=2.4,
-    ),
+    # LLM(
+    #     llm_name="DeepSeek-V3-new", 
+    #     api_key=byte_key, 
+    #     model="ep-20250331155118-wgw4n", 
+    #     provider=None, 
+    #     request_http = byte_http,
+    #     input_price=2.0,
+    #     output_price=8.0, 
+    # ),
+    # LLM(
+    #     llm_name="DeepSeek-V3-old", 
+    #     api_key=byte_key, 
+    #     model="ep-20250227102412-tfkv8", 
+    #     provider=None, 
+    #     request_http = byte_http,
+    #     input_price=2.0,
+    #     output_price=8.0, 
+    # ),
+    # LLM(
+    #     llm_name="Deepseek-R1-distill-qwen-7b",
+    #     api_key=byte_key,
+    #     model="ep-20250305162451-qxgns",
+    #     provider=None,
+    #     request_http = byte_http,
+    #     input_price=0.6,
+    #     output_price=2.4,
+    # ),
     LLM(
         llm_name="DeepSeek-R1-distill-qwen-32b",
         api_key=byte_key,
@@ -85,15 +85,15 @@ llm_list = [
         input_price=0.1 * rate,
         output_price=0.4 * rate,
     ),
-    LLM(
-        llm_name="Mistral-Codestral-2501",
-        api_key=open_key,
-        model="mistralai/codestral-2501",
-        provider="Mistral",
-        request_http = open_http,
-        input_price=0.3 * rate,
-        output_price=0.9 * rate,
-    ),
+    # LLM(
+    #     llm_name="Mistral-Codestral-2501",
+    #     api_key=open_key,
+    #     model="mistralai/codestral-2501",
+    #     provider="Mistral",
+    #     request_http = open_http,
+    #     input_price=0.3 * rate,
+    #     output_price=0.9 * rate,
+    # ),
     LLM(
         llm_name="Qwen2.5-72B-Instruct",
         api_key=open_key,
@@ -121,15 +121,15 @@ llm_list = [
         input_price=0.12 * rate,
         output_price=0.3 * rate,
     ),
-    LLM(
-        llm_name="Meta-Llama-3.3-70B-Instruct",
-        api_key=open_key,
-        model="meta-llama/llama-3.3-70b-instruct",
-        provider="DeepInfra",
-        request_http = open_http,
-        input_price=0.12 * rate,
-        output_price=0.3 * rate,
-    ),
+    # LLM(
+    #     llm_name="Meta-Llama-3.3-70B-Instruct",
+    #     api_key=open_key,
+    #     model="meta-llama/llama-3.3-70b-instruct",
+    #     provider="DeepInfra",
+    #     request_http = open_http,
+    #     input_price=0.12 * rate,
+    #     output_price=0.3 * rate,
+    # ),
     LLM(
         llm_name="ali-qwen-max",
         api_key=ali_key,
@@ -139,33 +139,33 @@ llm_list = [
         input_price=2.4,
         output_price=9.6,
     ),
-    LLM(
-        llm_name="ali-qwen-plus",
-        api_key=ali_key,
-        model="qwen-plus",
-        provider=None,
-        request_http = ali_http,
-        input_price=0.8,
-        output_price=2,
-    ),
-    LLM(
-        llm_name="ali-qwen-coder-plus",
-        api_key=ali_key,
-        model="qwen-coder-plus",
-        provider=None,
-        request_http = ali_http,
-        input_price=3.5,
-        output_price=7,
-    ),
-    LLM(
-        llm_name="ali-qwen-coder-turbo",
-        api_key=ali_key,
-        model="qwen-coder-turbo",
-        provider=None,
-        request_http = ali_http,
-        input_price=2,
-        output_price=6,
-    ),
+    # LLM(
+    #     llm_name="ali-qwen-plus",
+    #     api_key=ali_key,
+    #     model="qwen-plus",
+    #     provider=None,
+    #     request_http = ali_http,
+    #     input_price=0.8,
+    #     output_price=2,
+    # ),
+    # LLM(
+    #     llm_name="ali-qwen-coder-plus",
+    #     api_key=ali_key,
+    #     model="qwen-coder-plus",
+    #     provider=None,
+    #     request_http = ali_http,
+    #     input_price=3.5,
+    #     output_price=7,
+    # ),
+    # LLM(
+    #     llm_name="ali-qwen-coder-turbo",
+    #     api_key=ali_key,
+    #     model="qwen-coder-turbo",
+    #     provider=None,
+    #     request_http = ali_http,
+    #     input_price=2,
+    #     output_price=6,
+    # ),
     LLM(
         llm_name="ali-qwen2.5-coder-32b-instruct",
         api_key=ali_key,
@@ -211,7 +211,7 @@ class EvaluateLLM:
 
     # 计算下次选择大模型时使用的评分概率
     def calculate_probability(self) -> LLM:
-        return get_llm('Gemini-2.0-flash-001')
+        return get_random_model()
         window_size = 5
         c_1 = 100
         temperature = 1
