@@ -48,11 +48,11 @@ elif config_type == 'admissible_set':
     evaluate_function_mask_half = True
 
     sample_iterator_temperature = 100
-    sample_iterator_no_update_cnt = 3
+    sample_iterator_no_update_cnt = 1
 
     sample_llm_api_min_score = 548
 
-    measure_timeout = 30
+    measure_timeout = 60
 
 else:
     raise Exception('wrong type')
@@ -236,8 +236,7 @@ def priority(el: tuple[int, ...]) -> float:
 elif config_type == 'admissible_set':
     
     additional_prompt = \
-"""
-I'm working on the constant-weight admissible set problem with dimension 12 and weight 7, using a greedy algorithm that relies on a priority function to determine the vector selection order. Please help me develop a smarter `priority_v2` function by analyzing my reference implementations.
+'''I'm working on the constant-weight admissible set problem with dimension 12 and weight 7, using a greedy algorithm that relies on a priority function to determine the vector selection order. Please help me develop a smarter `priority_v2` function by analyzing my reference implementations.
 
 
 ## What I Need
@@ -260,36 +259,24 @@ I'm working on the constant-weight admissible set problem with dimension 12 and 
 
 
 ## Task Description
-Please provide a Python function `priority_v2(el: tuple[int, ...]) -> float` that:
+Please provide a Python function `priority_v2(el: np.ndarray) -> float` that:
 1. Takes an 12-dimensional vector (with elements in {0,1,2})
 2. Returns a priority score - higher scores indicate the vector should be considered earlier for addition to the admissible set
-3. Any helper functions should be defined within the `priority_v2` function
+3. **Use NumPy vectorized operations as much as possible**
+4. Any helper functions should be defined within the `priority_v2` function
 
 
 ## Current Priority Functions
 Below are two reference priority functions I've developed.
-"""
+'''
 
     specification = r'''import itertools
 import math
 import numpy as np
-from numpy.typing import NDArray
 
 
 def solve(n: int, w: int) -> np.ndarray:
     """Generates a constant-weight admissible set I(n, w)."""
-    # children = np.array(list(itertools.product((0, 1, 2), repeat=n)), dtype=np.int32)
-
-    # scores = -np.inf * np.ones((3**n,), dtype=np.float32)
-    # for child_index, child in enumerate(children):
-    #     if sum(child == 0) == n - w:
-    #         scores[child_index] = 0
-
-    # import pickle
-    # with open('admissible_set_scores.pkl', 'wb') as f:
-    #     pickle.dump((children, scores), f)
-    # exit()
-    
     import block_cpp
     import pickle
     with open('admissible_set_scores.pkl', 'rb') as f:
@@ -317,7 +304,7 @@ def evaluate(kargs) -> int:
 
 
 @funsearch.evolve
-def priority(el: NDArray[np.int32]) -> float:
+def priority(el: np.ndarray) -> float:
     """Computes a priority score for an element to determine its order of addition to the admissible set.
     
     Args:
