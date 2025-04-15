@@ -124,11 +124,8 @@ class ProgramsDatabase:
             with open(file, 'r') as f:
                 data = json.load(f)
             program = code_manipulation.Function(**data['program'])
-            if data['score'] > sample_llm_api_min_score:
-                node = Node(visit_count=data['visit_count'], score=data['score'], program=program, model=data['model'], parent_score=data['parent_score'])
-                self._nodes.append(node)
-            else:
-                print(f'find less equal min score {data["score"]}')
+            node = Node(visit_count=data['visit_count'], score=data['score'], program=program, model=data['model'], parent_score=data['parent_score'])
+            self._nodes.append(node)
         self.save_idx = 0
         if len(node_files) > 0:
             self.save_idx = int(os.path.splitext(os.path.basename(node_files[-1]))[0]) + 1

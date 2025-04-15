@@ -30,26 +30,33 @@ if config_type == 'bin_packing':
     measure_timeout = 15
 
 elif config_type == 'cap_set':
-    evaluate_function_c_v1 = 0.
-    evaluate_function_c_l1 = 0.
-    evaluate_function_c_1 = 1
-    evaluate_function_temperature = 10
-    evaluate_function_mask_half = True
+    # evaluate_function_c_v1 = 0.
+    # evaluate_function_c_l1 = 0.
+    # evaluate_function_c_1 = 1
+    # evaluate_function_temperature = 10
+    # evaluate_function_mask_half = True
 
     sample_iterator_temperature = 100
     sample_iterator_no_update_cnt = 5
 
-    sample_llm_api_min_score = 256
+    if n_dim == 7:
+        sample_llm_api_min_score = 128
+    elif n_dim == 8:
+        sample_llm_api_min_score = 256
+    elif n_dim == 9:
+        sample_llm_api_min_score = 512
+    else:
+        raise Exception('wrong n dim')
 
     measure_timeout = 15
 
 
 elif config_type == 'admissible_set':
-    evaluate_function_c_v1 = 0.
-    evaluate_function_c_l1 = 0.
-    evaluate_function_c_1 = 1
-    evaluate_function_temperature = 10
-    evaluate_function_mask_half = True
+    # evaluate_function_c_v1 = 0.
+    # evaluate_function_c_l1 = 0.
+    # evaluate_function_c_1 = 1
+    # evaluate_function_temperature = 10
+    # evaluate_function_mask_half = True
 
     sample_iterator_temperature = 100
     sample_iterator_no_update_cnt = 1
