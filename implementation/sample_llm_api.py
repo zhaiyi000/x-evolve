@@ -32,18 +32,9 @@ class LLM:
 
 llm_list = [
     # LLM(
-    #     llm_name="DeepSeek-V3-new", 
+    #     llm_name="DeepSeek-V3", 
     #     api_key=byte_key, 
     #     model="ep-20250331155118-wgw4n", 
-    #     provider=None, 
-    #     request_http = byte_http,
-    #     input_price=2.0,
-    #     output_price=8.0, 
-    # ),
-    # LLM(
-    #     llm_name="DeepSeek-V3-old", 
-    #     api_key=byte_key, 
-    #     model="ep-20250227102412-tfkv8", 
     #     provider=None, 
     #     request_http = byte_http,
     #     input_price=2.0,
@@ -58,24 +49,24 @@ llm_list = [
     #     input_price=0.6,
     #     output_price=2.4,
     # ),
-    LLM(
-        llm_name="DeepSeek-R1-distill-qwen-32b",
-        api_key=byte_key,
-        model="ep-20250305162537-2sbpv",
-        provider=None,
-        request_http = byte_http,
-        input_price=1.5,
-        output_price=6.0,
-    ),
-    LLM(
-        llm_name="GPT-4o-mini",
-        api_key=open_key,
-        model="openai/gpt-4o-mini",
-        provider="OpenAI",
-        request_http = open_http,
-        input_price=0.15 * rate,
-        output_price=0.6 * rate,
-    ),
+    # LLM(
+    #     llm_name="DeepSeek-R1-distill-qwen-32b",
+    #     api_key=byte_key,
+    #     model="ep-20250305162537-2sbpv",
+    #     provider=None,
+    #     request_http = byte_http,
+    #     input_price=1.5,
+    #     output_price=6.0,
+    # ),
+    # LLM(
+    #     llm_name="GPT-4o-mini",
+    #     api_key=open_key,
+    #     model="openai/gpt-4o-mini",
+    #     provider="OpenAI",
+    #     request_http = open_http,
+    #     input_price=0.15 * rate,
+    #     output_price=0.6 * rate,
+    # ),
     LLM(
         llm_name="Gemini-2.0-flash-001",
         api_key=open_key,
@@ -85,15 +76,15 @@ llm_list = [
         input_price=0.1 * rate,
         output_price=0.4 * rate,
     ),
-    # LLM(
-    #     llm_name="Mistral-Codestral-2501",
-    #     api_key=open_key,
-    #     model="mistralai/codestral-2501",
-    #     provider="Mistral",
-    #     request_http = open_http,
-    #     input_price=0.3 * rate,
-    #     output_price=0.9 * rate,
-    # ),
+    LLM(
+        llm_name="Mistral-Codestral-2501",
+        api_key=open_key,
+        model="mistralai/codestral-2501",
+        provider="Mistral",
+        request_http = open_http,
+        input_price=0.3 * rate,
+        output_price=0.9 * rate,
+    ),
     LLM(
         llm_name="Qwen2.5-72B-Instruct",
         api_key=open_key,
@@ -103,24 +94,24 @@ llm_list = [
         input_price=0.13 * rate,
         output_price=0.4 * rate,
     ),
-    LLM(
-        llm_name="DeepSeek-R1-Distill-Llama-70B",
-        api_key=open_key,
-        model="deepseek/deepseek-r1-distill-llama-70b",
-        provider="DeepInfra",
-        request_http = open_http,
-        input_price=0.23 * rate,
-        output_price=0.69 * rate,
-    ),
-    LLM(
-        llm_name="Meta-Llama-3.1-70B-Instruct",
-        api_key=open_key,
-        model="meta-llama/llama-3.1-70b-instruct",
-        provider="DeepInfra",
-        request_http = open_http,
-        input_price=0.12 * rate,
-        output_price=0.3 * rate,
-    ),
+    # LLM(
+    #     llm_name="DeepSeek-R1-Distill-Llama-70B",
+    #     api_key=open_key,
+    #     model="deepseek/deepseek-r1-distill-llama-70b",
+    #     provider="DeepInfra",
+    #     request_http = open_http,
+    #     input_price=0.23 * rate,
+    #     output_price=0.69 * rate,
+    # ),
+    # LLM(
+    #     llm_name="Meta-Llama-3.1-70B-Instruct",
+    #     api_key=open_key,
+    #     model="meta-llama/llama-3.1-70b-instruct",
+    #     provider="DeepInfra",
+    #     request_http = open_http,
+    #     input_price=0.12 * rate,
+    #     output_price=0.3 * rate,
+    # ),
     # LLM(
     #     llm_name="Meta-Llama-3.3-70B-Instruct",
     #     api_key=open_key,
@@ -166,15 +157,15 @@ llm_list = [
     #     input_price=2,
     #     output_price=6,
     # ),
-    LLM(
-        llm_name="ali-qwen2.5-coder-32b-instruct",
-        api_key=ali_key,
-        model="qwen2.5-coder-32b-instruct",
-        provider=None,
-        request_http = ali_http,
-        input_price=2,
-        output_price=6,
-    ),
+    # LLM(
+    #     llm_name="ali-qwen2.5-coder-32b-instruct",
+    #     api_key=ali_key,
+    #     model="qwen2.5-coder-32b-instruct",
+    #     provider=None,
+    #     request_http = ali_http,
+    #     input_price=2,
+    #     output_price=6,
+    # ),
 ]
 '''
 llm_list: 存储所有的大模型的list[LLM]
@@ -244,12 +235,11 @@ class EvaluateLLM:
                     intensity = math.exp(c_1 * (score - 1))
                 elif config_type == 'cap_set':
                     # intensity = 1 - math.exp(c_1 * -score)
-                    intensity = (1 - math.exp(10 * -score)) / (1 - math.exp(-10)) 
-                    # intensity = (1 - math.exp(-score)) / (1 - math.exp(-1))
-                    # intensity = score
+                    intensity = (1 - math.exp(10 * -score)) / (1 - math.exp(-10))
                 elif config_type == 'cycle_graphs':
                     intensity = (math.exp(c_1 * score) - 1) / (math.exp(c_1) - 1)
-                    # intensity = (1 - math.exp(10 * -score)) / (1 - math.exp(-10))
+                elif config_type == 'admissible_set':
+                    raise Exception('wrong type')
                 else:
                     raise Exception('wrong type')
                 return intensity
@@ -312,6 +302,12 @@ def get_gemini_20() -> LLM:
     return get_llm("Gemini-2.0-flash-001")
 
 
+def get_mistral() -> LLM:
+    return get_llm("Mistral-Codestral-2501")
+
+    
+
+
 def get_qwen_72b() -> LLM:
     return get_llm("Qwen2.5-72B-Instruct")
 
@@ -342,16 +338,8 @@ def get_random_gemini20_qwen72b_qwen32b_llama70b() -> LLM:
     local_llm_list = [get_gemini_20(), get_qwen_72b(), get_qwen_32b(), get_llama_70b()]
     return local_llm_list[np.random.choice(len(local_llm_list), size=1)[0]]
 
-# LLM(
-#         llm_name="DeepSeek-V3-old", 
-#         api_key=byte_key, 
-#         model="ep-20250227102412-tfkv8", 
-#         provider=None, 
-#         request_http = byte_http,
-#         input_price=2.0,
-#         output_price=8.0, 
-#     ),
- # LLM(
+        
+    # LLM(
     #     llm_name="DeepSeek-R1",
     #     api_key=byte_key,
     #     model="ep-20250303202036-j6hfh",

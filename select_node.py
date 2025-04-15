@@ -17,7 +17,79 @@ class Node:
 
 
 
-source_dirs = ['496/log_loop1_model3_2', '496/log_loop1_model3_4', '496/log_loop1_model3_8']
+source_dirs = [
+    
+    # 'loop_step1/loop1_448_403_428/log_loop1_model3_7',
+    # 'loop_step1/loop1_448_403_428/log_loop1_model3_8',
+    # 'loop_step1/loop1_448_403_428/log_loop1_model3_9',
+
+    # 'loop_step1/loop1_416_400_448/log_loop1_model3_7',
+    # 'loop_step1/loop1_416_400_448/log_loop1_model3_8',
+    # 'loop_step1/loop1_416_400_448/log_loop1_model3_9',
+
+    # 'loop_step1/loop1_424_410_400/log_loop1_model3_7',
+    # 'loop_step1/loop1_424_410_400/log_loop1_model3_8',
+    # 'loop_step1/loop1_424_410_400/log_loop1_model3_9',
+    
+    # 'loop_step1/loop1_374_464_394/log_loop1_model3_7',
+    # 'loop_step1/loop1_374_464_394/log_loop1_model3_8',
+    # 'loop_step1/loop1_374_464_394/log_loop1_model3_9',
+
+    # 'loop_step1/loop1_436_388_400/log_loop1_model3_10',
+    # 'loop_step1/loop1_436_388_400/log_loop1_model3_11',
+    # 'loop_step1/loop1_436_388_400/log_loop1_model3_12',
+    
+    
+
+    # 'loop_step2/448_no_update/loop1/log_loop1_model3_4',
+    # 'loop_step2/448_no_update/loop1/log_loop1_model3_5',
+    # 'loop_step2/448_no_update/loop1/log_loop1_model3_6',
+
+    # 'loop_step2/448_no_update/loop2/log_loop1_model3_4',
+    # 'loop_step2/448_no_update/loop2/log_loop1_model3_5',
+    # 'loop_step2/448_no_update/loop2/log_loop1_model3_6',
+    # 'loop_step2/448_no_update/loop2/log_loop1_model3_10',
+    # 'loop_step2/448_no_update/loop2/log_loop1_model3_11',
+    # 'loop_step2/448_no_update/loop2/log_loop1_model3_12',
+
+    # 'loop_step2/448_no_update/loop3/log_loop1_model3_4',
+    # 'loop_step2/448_no_update/loop3/log_loop1_model3_5',
+    # 'loop_step2/448_no_update/loop3/log_loop1_model3_6',
+    
+    
+
+    # 'loop_step3/464/log_loop0_model3_3',
+
+    # 'loop_step3/496/log_loop1_model3_2',
+    # 'loop_step3/496/log_loop1_model3_4',
+    # 'loop_step3/496/log_loop1_model3_8',
+
+    # 'loop_step3/496_no_update/loop0/log_loop1_model3_1',
+    # 'loop_step3/496_no_update/loop0/log_loop1_model3_2',
+    # 'loop_step3/496_no_update/loop0/log_loop1_model3_4',
+    # 'loop_step3/496_no_update/loop0/log_loop1_model3_5',
+
+    # 'loop_step3/496_no_update/loop1/log_loop1_model3_1',
+    # 'loop_step3/496_no_update/loop1/log_loop1_model3_2',
+    # 'loop_step3/496_no_update/loop1/log_loop1_model3_3',
+    # 'loop_step3/496_no_update/loop1/log_loop1_model3_4',
+    # 'loop_step3/496_no_update/loop1/log_loop1_model3_5',
+    # 'loop_step3/496_no_update/loop1/log_loop1_model3_6',
+
+    # 'loop_step3/496_no_update/loop2/log_loop1_model3_1',
+    # 'loop_step3/496_no_update/loop2/log_loop1_model3_2',
+    # 'loop_step3/496_no_update/loop2/log_loop1_model3_3',
+    # 'loop_step3/496_no_update/loop2/log_loop1_model3_10',
+    # 'loop_step3/496_no_update/loop2/log_loop1_model3_11',
+    # 'loop_step3/496_no_update/loop2/log_loop1_model3_12',
+
+    # 'loop_step3/496_no_update/loop3/log_loop1_model3_1',
+    # 'loop_step3/496_no_update/loop3/log_loop1_model3_2',
+    # 'loop_step3/496_no_update/loop3/log_loop1_model3_3',
+    
+    'log_loop1_model3_2'
+
+]
 target_dirs = ['496_merge']
 
 
@@ -41,6 +113,7 @@ data_list = []
 data_i_list = [0] * len(data_list_list)
 progrom_dic = {}
 repeat_cnt = 0
+model_dic = {}
 while True:
     keys = list(range(len(data_list_list)))
     random.shuffle(keys)
@@ -57,11 +130,28 @@ while True:
             progrom = data.data['program']['body']
             if progrom in progrom_dic:
                 repeat_cnt += 1
-                print(data.file_idx, end=' ')
+                print('repeat score', data.data['score'], data.file_idx)
+                # print(data.file_idx, end=' ')
                 assert data.data['score'] == progrom_dic[progrom]
                 continue
+            
+            # if data.data['parent_score']:
+            #     if (data.data['score'] >= 380 and data.data['score'] - max(data.data['parent_score']) >= 10):
+            #         print(data.data['score'], data.data['parent_score'])
+            #     else:
+            #         continue
+            # else:
+            #     continue
+
+            if data.data['parent_score'] and data.data['score'] <= max(data.data['parent_score']):
+                continue
+
             progrom_dic[progrom] = data.data['score']
             data_list.append(data)
+
+            if data.data['model'] not in model_dic:
+                model_dic[data.data['model']] = 0
+            model_dic[data.data['model']] += 1
     
     if all_end:
         break
@@ -96,11 +186,16 @@ print('repeat_cnt', repeat_cnt)
 print('keep_cnt', keep_cnt)
 print('one_percent', one_percent)
 
+print()
+model_dic_list = list(model_dic.items())
+model_dic_list.sort(key=lambda x: -x[1])
+print(model_dic_list)
+# exit()
 
 select_list: list[Node] = []
 for data_dic in data_dic_list:
-    for source_i, data_list in data_dic.items():
-        print(data_list[0].data['score'], 'source_i', source_i, 'cnt', len(data_list))
+    # for source_i, data_list in data_dic.items():
+    #     print(data_list[0].data['score'], 'source_i', source_i, 'cnt', len(data_list))
     #     score_list = [node.data['score'] for node in data_list]
     #     source_list = [node.source_i for node in data_list]
     #     assert max(score_list) == min(score_list)
@@ -138,6 +233,7 @@ for target_dir in target_dirs:
 
 
     if os.path.exists(node_dir):
+        raise Exception('target dir not empty')
         y_or_n = 'y'  # input('delete node dir? [n]')
         if y_or_n == 'y':
             print('delete node dir!')
@@ -146,7 +242,7 @@ for target_dir in target_dirs:
 
     os.makedirs(node_dir, exist_ok=True)
     for data_i, node in enumerate(select_list):
-        print(node.data['score'], node.source_i, node.file_idx)
+        # print(node.data['score'], node.source_i, node.file_idx)
         node_file = os.path.join(node_dir, f'{data_i}.json')
         with open(node_file, 'w') as f:
             json.dump(node.data, f)

@@ -1,14 +1,18 @@
 import os
 
 
-config_type = 'cycle_graphs'
+config_type = os.environ.get('CONFIG_TYPE', None)
+if config_type not in ['bin_packing', 'cap_set', 'admissible_set', 'cycle_graphs']:
+    raise Exception('wrong type')
+n_dim = None
+if config_type == 'cap_set':
+    n_dim = os.environ.get('N_DIM', None)
+    assert n_dim != None
+    n_dim = int(n_dim)
+
+
 log_dir = os.environ.get('LOG_DIR', 'logs')
 sample_llm_cnt = 10
-
-
-
-if config_type not in ['bin_packing', 'cap_set', 'cycle_graphs']:
-    raise Exception('wrong type')
 
 
 if config_type == 'bin_packing':
@@ -23,17 +27,43 @@ if config_type == 'bin_packing':
 
     sample_llm_api_min_score = -500
 
+    measure_timeout = 15
+
 elif config_type == 'cap_set':
-    evaluate_function_c_v1 = 0.
-    evaluate_function_c_l1 = 0.
-    evaluate_function_c_1 = 1
-    evaluate_function_temperature = 10
-    evaluate_function_mask_half = True
+    # evaluate_function_c_v1 = 0.
+    # evaluate_function_c_l1 = 0.
+    # evaluate_function_c_1 = 1
+    # evaluate_function_temperature = 10
+    # evaluate_function_mask_half = True
 
     sample_iterator_temperature = 100
     sample_iterator_no_update_cnt = 5
 
-    sample_llm_api_min_score = 256
+    if n_dim == 7:
+        sample_llm_api_min_score = 128
+    elif n_dim == 8:
+        sample_llm_api_min_score = 256
+    elif n_dim == 9:
+        sample_llm_api_min_score = 512
+    else:
+        raise Exception('wrong n dim')
+
+    measure_timeout = 15
+
+
+elif config_type == 'admissible_set':
+    # evaluate_function_c_v1 = 0.
+    # evaluate_function_c_l1 = 0.
+    # evaluate_function_c_1 = 1
+    # evaluate_function_temperature = 10
+    # evaluate_function_mask_half = True
+
+    sample_iterator_temperature = 100
+    sample_iterator_no_update_cnt = 1
+
+    sample_llm_api_min_score = 548
+
+    measure_timeout = 60
 
 elif config_type == 'cycle_graphs':
     evaluate_function_c_v1 = 0.1
@@ -64,8 +94,7 @@ Parameter tuning points: Clearly mark tuning parameters using tunable([option1, 
 Focus first on strategic innovation, then expose tuning parameters through tunable([option1, option2, ...]) calls. Keep implementation practical but non-trivial.
 """
 
-    specification = r'''
-import numpy as np
+    specification = r'''import numpy as np
 
 
 def get_valid_bin_indices(item: float, bins: np.ndarray) -> np.ndarray:
@@ -138,23 +167,42 @@ def priority(item: float, bins: np.ndarray) -> np.ndarray:
 elif config_type == 'cap_set':
     
     additional_prompt = \
-"""
-Create an improved priority function for constructing 8-dimensional cap sets that demonstrates:
-Novel vector priority strategy: Design a smarter vector selection strategy.
-Parameter tuning points: Mark adjustable parameters using tunable([option1, option2, ...]) wrapper. Examples:
-`if axis_balance_weight = tunable([0.1, 0.3, 0.5])`
-`sorted(elements, key=lambda x: tunable([x.diversity, x.centrality]))`
-Focus first on innovative vector selection heuristics, then expose tuning parameters via `tunable()`.
+f'''I'm working on the {n_dim}-dimensional cap set problem using a greedy algorithm with a priority function to determine vector selection order. Please help me develop a smarter `priority_v2` function by analyzing my reference implementations.
 
-Note:
-1. Do not generate the `tunable()` function implementation.
-2. Any helper functions should be defined within the priority function.
-"""
 
-    specification = r'''
-import numpy as np
+## What I Need
+1. **BOLD EVOLUTION OF PRIORITY FUNCTION**: Please create a novel priority function variant that might outperform my reference implementations. Don't be constrained by my current approaches - take risks and suggest radically different strategies that might lead to breakthroughs.
+2. **MARK ALL TUNABLE PARAMETERS**: For every single element that could potentially be tuned (no matter how minor), mark it with tunable([option1, option2, ...]) wrapper. 
+  This includes but is not limited to:
+    - Parameters and constants
+    - Weighting factors
+    - Thresholds
+    - Logical conditions
+    - Calculation methods
+    - Function selection options
+    - Algorithm hyperparameters
+    - Anything else that might impact priority
+  Format examples:
+    - `if x == tunable([number_1, number_2, number_3])`
+    - `sorted(elements, key=lambda x: tunable([x.property_1, x.property_2]))`
+
+**My primary focus is on the conceptual innovation of the priority function itself.** While accurately marking tunable parameters is essential, please dedicate your main effort to designing the *core logic* of a potentially superior function first.
+
+
+## Task Description
+Please provide a Python function `priority_v2(el: tuple[int, ...]) -> float` that:
+1. Takes an {n_dim}-dimensional vector (with elements in {{0,1,2}})
+2. Returns a priority score - higher scores indicate the vector should be considered earlier for addition to the Cap Set
+3. Any helper functions should be defined within the `priority_v2` function
+
+
+## Current Priority Functions
+Below are two reference priority functions I've developed.
+'''
+
+    specification = f'''import numpy as np
 import itertools
-from typing import List, Tuple
+import math
 
 
 @funsearch.run
@@ -192,16 +240,16 @@ def solve(n: int) -> np.ndarray:
 
 @funsearch.evolve
 def priority(el: tuple[int, ...]) -> float:
-    """Returns the priority with which we want to add `el` to the cap set in `n=8` dimensions.
+    """Returns the priority with which we want to add `el` to the cap set in `n={n_dim}` dimensions.
     
     Args:
-        el: An 8-dimensional vector (tuple) with components in {0, 1, 2}.
+        el: An {n_dim}-dimensional vector (tuple) with components in {{0, 1, 2}}.
 
     Return:
         Priority score determining selection order in greedy algorithm. Higher
         values indicate the vector should be considered earlier.
     """
-    n = 8
+    n = {n_dim}
     return 0.0
 '''
 
@@ -302,4 +350,89 @@ def priority(el: tuple[int, ...], num_nodes: int, n: int) -> float:
         independent set.
     """
     return 0.
+'''
+
+elif config_type == 'admissible_set':
+    
+    additional_prompt = \
+'''I'm working on the constant-weight admissible set problem with dimension 12 and weight 7, using a greedy algorithm that relies on a priority function to determine the vector selection order. Please help me develop a smarter `priority_v2` function by analyzing my reference implementations.
+
+
+## What I Need
+1. **BOLD EVOLUTION OF PRIORITY FUNCTION**: Please create a novel priority function variant that might outperform my reference implementations. Don't be constrained by my current approaches - take risks and suggest radically different strategies that might lead to breakthroughs.
+2. **MARK ALL TUNABLE PARAMETERS**: For every single element that could potentially be tuned (no matter how minor), mark it with tunable([option1, option2, ...]) wrapper. 
+  This includes but is not limited to:
+    - Parameters and constants
+    - Weighting factors
+    - Thresholds
+    - Logical conditions
+    - Calculation methods
+    - Function selection options
+    - Algorithm hyperparameters
+    - Anything else that might impact priority
+  Format examples:
+    - `if x == tunable([number_1, number_2, number_3])`
+    - `sorted(elements, key=lambda x: tunable([x.property_1, x.property_2]))`
+
+**My primary focus is on the conceptual innovation of the priority function itself.** While accurately marking tunable parameters is essential, please dedicate your main effort to designing the *core logic* of a potentially superior function first.
+
+
+## Task Description
+Please provide a Python function `priority_v2(el: np.ndarray) -> float` that:
+1. Takes an 12-dimensional vector (with elements in {0,1,2})
+2. Returns a priority score - higher scores indicate the vector should be considered earlier for addition to the admissible set
+3. **Use NumPy vectorized operations as much as possible**
+4. Any helper functions should be defined within the `priority_v2` function
+
+
+## Current Priority Functions
+Below are two reference priority functions I've developed.
+'''
+
+    specification = r'''import itertools
+import math
+import numpy as np
+
+
+def solve(n: int, w: int) -> np.ndarray:
+    """Generates a constant-weight admissible set I(n, w)."""
+    import block_cpp
+    import pickle
+    with open('admissible_set_scores.pkl', 'rb') as f:
+        children, scores = pickle.load(f)
+    for child_index, child in enumerate(children):
+        if scores[child_index] == 0:
+            scores[child_index] = priority(np.array(child))
+
+    max_admissible_set = np.empty((0, n), dtype=np.int32)
+    while np.any(scores != -np.inf):
+        # Find element with largest score.
+        max_index = np.argmax(scores)
+        child = children[max_index]
+        # block_children(scores, max_admissible_set, child)
+        block_cpp.block_children(scores, max_admissible_set, child)
+        max_admissible_set = np.concatenate([max_admissible_set, child[None]], axis=0)
+
+    return max_admissible_set
+
+
+@funsearch.run
+def evaluate(kargs) -> int:
+    """Returns the size of the constructed admissible set."""
+    return len(solve(kargs['n'], kargs['w']))
+
+
+@funsearch.evolve
+def priority(el: np.ndarray) -> float:
+    """Computes a priority score for an element to determine its order of addition to the admissible set.
+    
+    Args:
+        el: A numpy array representing an element with n=12 positions, where each position contains 0, 1, or 2. Elements have weight w=7 (meaning 7 non-zero values).
+
+    Return:
+        A float score where higher values indicate higher priority for inclusion in the admissible set.
+    """
+    n = 12
+    w = 7
+    return 0
 '''

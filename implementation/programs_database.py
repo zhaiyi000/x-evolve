@@ -34,6 +34,7 @@ from config import log_dir
 import os
 import json
 import natsort, glob
+from config import sample_llm_api_min_score
 
 # RZ: I change the original code "tuple[float, ...]" to "Tuple[float, ...]"
 Signature = Tuple[float, ...]
@@ -94,6 +95,8 @@ class Node:
     # score_update: float
     # node_id: int
     program: code_manipulation.Function
+    model: str
+    parent_score: list[float]
 
     # @property
     # def score_avg(self):
@@ -121,8 +124,11 @@ class ProgramsDatabase:
             with open(file, 'r') as f:
                 data = json.load(f)
             program = code_manipulation.Function(**data['program'])
-            node = Node(visit_count=data['visit_count'], score=data['score'], program=program)
+            node = Node(visit_count=data['visit_count'], score=data['score'], program=program, model=data['model'], parent_score=data['parent_score'])
             self._nodes.append(node)
+        self.save_idx = 0
+        if len(node_files) > 0:
+            self.save_idx = int(os.path.splitext(os.path.basename(node_files[-1]))[0]) + 1
         print(f'find {len(node_files)} node files')
 
 
@@ -132,10 +138,9 @@ class ProgramsDatabase:
         visit_list = [node.visit_count for node in nodes]
         length_list = [len(str(node.program)) for node in nodes]
         
-        probabilities = evaluate_function.calculate_score(score_list=score_list, visit_list=visit_list, length_list=length_list)
-        
         functions_per_prompt = min(len(self._nodes), self._functions_per_prompt)
-        best_nodes = np.random.choice(nodes, size=functions_per_prompt, p=probabilities, replace=False)
+        best_indices = evaluate_function.calculate_score(score_list=score_list, size=functions_per_prompt, replace=True)
+        best_nodes = [nodes[i] for i in best_indices]
         best_nodes = list(best_nodes)
 
         best_nodes.sort(key=lambda x: x.score)
@@ -193,6 +198,8 @@ class ProgramsDatabase:
             self,
             program: code_manipulation.Function,
             scores_per_test: ScoresPerTest,
+            model,
+            parent_score
             # **kwargs  # RZ: add this for profiling
     ) -> None:
         """Registers `program` in the specified island."""
@@ -204,12 +211,13 @@ class ProgramsDatabase:
         else:
             raise Exception('unkonw data type')
 
-        node = Node(visit_count=0, score=score, program=program)
+        node = Node(visit_count=0, score=score, program=program, model=model, parent_score=parent_score)
         self._nodes.append(node)
 
         node_dir = os.path.join(log_dir, 'node')
         os.makedirs(node_dir, exist_ok=True)
-        node_file = os.path.join(node_dir, f'{len(self._nodes)-1}.json')
+        node_file = os.path.join(node_dir, f'{self.save_idx}.json')
+        self.save_idx += 1
         with open(node_file, 'w') as f:
             json.dump(dataclasses.asdict(node), f)
 
