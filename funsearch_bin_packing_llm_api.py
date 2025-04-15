@@ -269,7 +269,7 @@ if __name__ == '__main__':
     if config_type == 'bin_packing':
         inputs = {'OR3': bin_packing_utils.datasets['OR3']}
     elif config_type == 'cap_set':
-        inputs = {'8': 8}
+        inputs = {'7': 7}
     else:
         raise Exception('wrong case')
     global_max_sample_num = 2000  # if it is set to None, funsearch will execute an endless loop

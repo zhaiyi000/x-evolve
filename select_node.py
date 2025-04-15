@@ -19,74 +19,75 @@ class Node:
 
 source_dirs = [
     
-    'loop_step1/loop1_448_403_428/log_loop1_model3_7',
-    'loop_step1/loop1_448_403_428/log_loop1_model3_8',
-    'loop_step1/loop1_448_403_428/log_loop1_model3_9',
+    # 'loop_step1/loop1_448_403_428/log_loop1_model3_7',
+    # 'loop_step1/loop1_448_403_428/log_loop1_model3_8',
+    # 'loop_step1/loop1_448_403_428/log_loop1_model3_9',
 
-    'loop_step1/loop1_416_400_448/log_loop1_model3_7',
-    'loop_step1/loop1_416_400_448/log_loop1_model3_8',
-    'loop_step1/loop1_416_400_448/log_loop1_model3_9',
+    # 'loop_step1/loop1_416_400_448/log_loop1_model3_7',
+    # 'loop_step1/loop1_416_400_448/log_loop1_model3_8',
+    # 'loop_step1/loop1_416_400_448/log_loop1_model3_9',
 
-    'loop_step1/loop1_424_410_400/log_loop1_model3_7',
-    'loop_step1/loop1_424_410_400/log_loop1_model3_8',
-    'loop_step1/loop1_424_410_400/log_loop1_model3_9',
+    # 'loop_step1/loop1_424_410_400/log_loop1_model3_7',
+    # 'loop_step1/loop1_424_410_400/log_loop1_model3_8',
+    # 'loop_step1/loop1_424_410_400/log_loop1_model3_9',
     
-    'loop_step1/loop1_374_464_394/log_loop1_model3_7',
-    'loop_step1/loop1_374_464_394/log_loop1_model3_8',
-    'loop_step1/loop1_374_464_394/log_loop1_model3_9',
+    # 'loop_step1/loop1_374_464_394/log_loop1_model3_7',
+    # 'loop_step1/loop1_374_464_394/log_loop1_model3_8',
+    # 'loop_step1/loop1_374_464_394/log_loop1_model3_9',
 
-    'loop_step1/loop1_436_388_400/log_loop1_model3_10',
-    'loop_step1/loop1_436_388_400/log_loop1_model3_11',
-    'loop_step1/loop1_436_388_400/log_loop1_model3_12',
-    
-    
-
-    'loop_step2/448_no_update/loop1/log_loop1_model3_4',
-    'loop_step2/448_no_update/loop1/log_loop1_model3_5',
-    'loop_step2/448_no_update/loop1/log_loop1_model3_6',
-
-    'loop_step2/448_no_update/loop2/log_loop1_model3_4',
-    'loop_step2/448_no_update/loop2/log_loop1_model3_5',
-    'loop_step2/448_no_update/loop2/log_loop1_model3_6',
-    'loop_step2/448_no_update/loop2/log_loop1_model3_10',
-    'loop_step2/448_no_update/loop2/log_loop1_model3_11',
-    'loop_step2/448_no_update/loop2/log_loop1_model3_12',
-
-    'loop_step2/448_no_update/loop3/log_loop1_model3_4',
-    'loop_step2/448_no_update/loop3/log_loop1_model3_5',
-    'loop_step2/448_no_update/loop3/log_loop1_model3_6',
+    # 'loop_step1/loop1_436_388_400/log_loop1_model3_10',
+    # 'loop_step1/loop1_436_388_400/log_loop1_model3_11',
+    # 'loop_step1/loop1_436_388_400/log_loop1_model3_12',
     
     
 
-    'loop_step3/464/log_loop0_model3_3',
+    # 'loop_step2/448_no_update/loop1/log_loop1_model3_4',
+    # 'loop_step2/448_no_update/loop1/log_loop1_model3_5',
+    # 'loop_step2/448_no_update/loop1/log_loop1_model3_6',
 
-    'loop_step3/496/log_loop1_model3_2',
-    'loop_step3/496/log_loop1_model3_4',
-    'loop_step3/496/log_loop1_model3_8',
+    # 'loop_step2/448_no_update/loop2/log_loop1_model3_4',
+    # 'loop_step2/448_no_update/loop2/log_loop1_model3_5',
+    # 'loop_step2/448_no_update/loop2/log_loop1_model3_6',
+    # 'loop_step2/448_no_update/loop2/log_loop1_model3_10',
+    # 'loop_step2/448_no_update/loop2/log_loop1_model3_11',
+    # 'loop_step2/448_no_update/loop2/log_loop1_model3_12',
 
-    'loop_step3/496_no_update/loop0/log_loop1_model3_1',
-    'loop_step3/496_no_update/loop0/log_loop1_model3_2',
-    'loop_step3/496_no_update/loop0/log_loop1_model3_4',
-    'loop_step3/496_no_update/loop0/log_loop1_model3_5',
-
-    'loop_step3/496_no_update/loop1/log_loop1_model3_1',
-    'loop_step3/496_no_update/loop1/log_loop1_model3_2',
-    'loop_step3/496_no_update/loop1/log_loop1_model3_3',
-    'loop_step3/496_no_update/loop1/log_loop1_model3_4',
-    'loop_step3/496_no_update/loop1/log_loop1_model3_5',
-    'loop_step3/496_no_update/loop1/log_loop1_model3_6',
-
-    'loop_step3/496_no_update/loop2/log_loop1_model3_1',
-    'loop_step3/496_no_update/loop2/log_loop1_model3_2',
-    'loop_step3/496_no_update/loop2/log_loop1_model3_3',
-    'loop_step3/496_no_update/loop2/log_loop1_model3_10',
-    'loop_step3/496_no_update/loop2/log_loop1_model3_11',
-    'loop_step3/496_no_update/loop2/log_loop1_model3_12',
-
-    'loop_step3/496_no_update/loop3/log_loop1_model3_1',
-    'loop_step3/496_no_update/loop3/log_loop1_model3_2',
-    'loop_step3/496_no_update/loop3/log_loop1_model3_3',
+    # 'loop_step2/448_no_update/loop3/log_loop1_model3_4',
+    # 'loop_step2/448_no_update/loop3/log_loop1_model3_5',
+    # 'loop_step2/448_no_update/loop3/log_loop1_model3_6',
     
+    
+
+    # 'loop_step3/464/log_loop0_model3_3',
+
+    # 'loop_step3/496/log_loop1_model3_2',
+    # 'loop_step3/496/log_loop1_model3_4',
+    # 'loop_step3/496/log_loop1_model3_8',
+
+    # 'loop_step3/496_no_update/loop0/log_loop1_model3_1',
+    # 'loop_step3/496_no_update/loop0/log_loop1_model3_2',
+    # 'loop_step3/496_no_update/loop0/log_loop1_model3_4',
+    # 'loop_step3/496_no_update/loop0/log_loop1_model3_5',
+
+    # 'loop_step3/496_no_update/loop1/log_loop1_model3_1',
+    # 'loop_step3/496_no_update/loop1/log_loop1_model3_2',
+    # 'loop_step3/496_no_update/loop1/log_loop1_model3_3',
+    # 'loop_step3/496_no_update/loop1/log_loop1_model3_4',
+    # 'loop_step3/496_no_update/loop1/log_loop1_model3_5',
+    # 'loop_step3/496_no_update/loop1/log_loop1_model3_6',
+
+    # 'loop_step3/496_no_update/loop2/log_loop1_model3_1',
+    # 'loop_step3/496_no_update/loop2/log_loop1_model3_2',
+    # 'loop_step3/496_no_update/loop2/log_loop1_model3_3',
+    # 'loop_step3/496_no_update/loop2/log_loop1_model3_10',
+    # 'loop_step3/496_no_update/loop2/log_loop1_model3_11',
+    # 'loop_step3/496_no_update/loop2/log_loop1_model3_12',
+
+    # 'loop_step3/496_no_update/loop3/log_loop1_model3_1',
+    # 'loop_step3/496_no_update/loop3/log_loop1_model3_2',
+    # 'loop_step3/496_no_update/loop3/log_loop1_model3_3',
+    
+    'log_loop1_model3_2'
 
 ]
 target_dirs = ['496_merge']
@@ -129,6 +130,7 @@ while True:
             progrom = data.data['program']['body']
             if progrom in progrom_dic:
                 repeat_cnt += 1
+                print('repeat score', data.data['score'], data.file_idx)
                 # print(data.file_idx, end=' ')
                 assert data.data['score'] == progrom_dic[progrom]
                 continue
@@ -140,6 +142,9 @@ while True:
             #         continue
             # else:
             #     continue
+
+            if data.data['parent_score'] and data.data['score'] <= max(data.data['parent_score']):
+                continue
 
             progrom_dic[progrom] = data.data['score']
             data_list.append(data)

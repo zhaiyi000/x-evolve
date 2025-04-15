@@ -125,8 +125,7 @@ def priority(item: float, bins: np.ndarray) -> np.ndarray:
 elif config_type == 'cap_set':
     
     additional_prompt = \
-"""
-I'm working on the 8-dimensional cap set problem using a greedy algorithm with a priority function to determine vector selection order. Please help me develop a smarter `priority_v2` function by analyzing my reference implementations.
+'''I'm working on the 7-dimensional cap set problem using a greedy algorithm with a priority function to determine vector selection order. Please help me develop a smarter `priority_v2` function by analyzing my reference implementations.
 
 
 ## What I Need
@@ -150,19 +149,18 @@ I'm working on the 8-dimensional cap set problem using a greedy algorithm with a
 
 ## Task Description
 Please provide a Python function `priority_v2(el: tuple[int, ...]) -> float` that:
-1. Takes an 8-dimensional vector (with elements in {0,1,2})
+1. Takes an 7-dimensional vector (with elements in {0,1,2})
 2. Returns a priority score - higher scores indicate the vector should be considered earlier for addition to the Cap Set
 3. Any helper functions should be defined within the `priority_v2` function
 
 
 ## Current Priority Functions
 Below are two reference priority functions I've developed.
-"""
+'''
 
     specification = r'''import numpy as np
 import itertools
 import math
-from typing import List, Tuple
 
 
 @funsearch.run
@@ -200,15 +198,15 @@ def solve(n: int) -> np.ndarray:
 
 @funsearch.evolve
 def priority(el: tuple[int, ...]) -> float:
-    """Returns the priority with which we want to add `el` to the cap set in `n=8` dimensions.
+    """Returns the priority with which we want to add `el` to the cap set in `n=7` dimensions.
     
     Args:
-        el: An 8-dimensional vector (tuple) with components in {0, 1, 2}.
+        el: An 7-dimensional vector (tuple) with components in {0, 1, 2}.
 
     Return:
         Priority score determining selection order in greedy algorithm. Higher
         values indicate the vector should be considered earlier.
     """
-    n = 8
+    n = 7
     return 0.0
 '''
