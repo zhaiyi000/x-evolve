@@ -1,14 +1,18 @@
 import os
 
 
-config_type = 'admissible_set'
-log_dir = os.environ.get('LOG_DIR', 'logs')
-sample_llm_cnt = 10
-
-
-
+config_type = os.environ.get('CONFIG_TYPE', None)
 if config_type not in ['bin_packing', 'cap_set', 'admissible_set']:
     raise Exception('wrong type')
+n_dim = None
+if config_type == 'cap_set':
+    n_dim = os.environ.get('N_DIM', None)
+    assert n_dim != None
+    n_dim = int(n_dim)
+
+
+log_dir = os.environ.get('LOG_DIR', 'logs')
+sample_llm_cnt = 10
 
 
 if config_type == 'bin_packing':
@@ -144,7 +148,7 @@ def priority(item: float, bins: np.ndarray) -> np.ndarray:
 elif config_type == 'cap_set':
     
     additional_prompt = \
-'''I'm working on the 7-dimensional cap set problem using a greedy algorithm with a priority function to determine vector selection order. Please help me develop a smarter `priority_v2` function by analyzing my reference implementations.
+f'''I'm working on the {n_dim}-dimensional cap set problem using a greedy algorithm with a priority function to determine vector selection order. Please help me develop a smarter `priority_v2` function by analyzing my reference implementations.
 
 
 ## What I Need
@@ -168,7 +172,7 @@ elif config_type == 'cap_set':
 
 ## Task Description
 Please provide a Python function `priority_v2(el: tuple[int, ...]) -> float` that:
-1. Takes an 7-dimensional vector (with elements in {0,1,2})
+1. Takes an {n_dim}-dimensional vector (with elements in {{0,1,2}})
 2. Returns a priority score - higher scores indicate the vector should be considered earlier for addition to the Cap Set
 3. Any helper functions should be defined within the `priority_v2` function
 
@@ -177,7 +181,7 @@ Please provide a Python function `priority_v2(el: tuple[int, ...]) -> float` tha
 Below are two reference priority functions I've developed.
 '''
 
-    specification = r'''import numpy as np
+    specification = f'''import numpy as np
 import itertools
 import math
 
@@ -217,16 +221,16 @@ def solve(n: int) -> np.ndarray:
 
 @funsearch.evolve
 def priority(el: tuple[int, ...]) -> float:
-    """Returns the priority with which we want to add `el` to the cap set in `n=7` dimensions.
+    """Returns the priority with which we want to add `el` to the cap set in `n={n_dim}` dimensions.
     
     Args:
-        el: An 7-dimensional vector (tuple) with components in {0, 1, 2}.
+        el: An {n_dim}-dimensional vector (tuple) with components in {{0, 1, 2}}.
 
     Return:
         Priority score determining selection order in greedy algorithm. Higher
         values indicate the vector should be considered earlier.
     """
-    n = 7
+    n = {n_dim}
     return 0.0
 '''
 

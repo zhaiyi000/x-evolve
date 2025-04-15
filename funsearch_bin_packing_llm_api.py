@@ -21,7 +21,7 @@ from concurrent.futures import ProcessPoolExecutor, TimeoutError
 import re
 import gc
 import os
-from config import config_type, log_dir, additional_prompt, specification, measure_timeout
+from config import config_type, log_dir, additional_prompt, specification, measure_timeout, n_dim
 import random
 
 
@@ -269,7 +269,7 @@ if __name__ == '__main__':
     if config_type == 'bin_packing':
         inputs = {'OR3': bin_packing_utils.datasets['OR3']}
     elif config_type == 'cap_set':
-        inputs = {'7': 7}
+        inputs = {n_dim: n_dim}
     elif config_type == 'admissible_set':
         inputs = {'12_7': {'n': 12, 'w': 7}}
     else:
