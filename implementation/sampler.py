@@ -190,8 +190,8 @@ class Sampler:
 
             with self._mux_sem:
                 print(f'\n\n\n-- {parent_score} -- {llm_name} ----end-----------')
-                if max_score != MIN_SCORE and max_score > max(parent_score):
-                # if max_score != MIN_SCORE:
+                # if max_score != MIN_SCORE and max_score > max(parent_score):
+                if max_score != MIN_SCORE:
                     print('register to database')
                     function_code = tune_sampler.get_final_code()
                     new_function, _ = evaluator._sample_to_program(

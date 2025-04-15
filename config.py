@@ -144,8 +144,7 @@ def priority(item: float, bins: np.ndarray) -> np.ndarray:
 elif config_type == 'cap_set':
     
     additional_prompt = \
-"""
-I'm working on the 7-dimensional cap set problem using a greedy algorithm with a priority function to determine vector selection order. Please help me develop a smarter `priority_v2` function by analyzing my reference implementations.
+'''I'm working on the 7-dimensional cap set problem using a greedy algorithm with a priority function to determine vector selection order. Please help me develop a smarter `priority_v2` function by analyzing my reference implementations.
 
 
 ## What I Need
@@ -176,12 +175,11 @@ Please provide a Python function `priority_v2(el: tuple[int, ...]) -> float` tha
 
 ## Current Priority Functions
 Below are two reference priority functions I've developed.
-"""
+'''
 
     specification = r'''import numpy as np
 import itertools
 import math
-from typing import List, Tuple
 
 
 @funsearch.run
