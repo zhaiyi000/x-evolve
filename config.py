@@ -13,6 +13,7 @@ if config_type == 'cap_set':
 
 log_dir = os.environ.get('LOG_DIR', 'logs')
 sample_llm_cnt = 10
+update_database_cnt = 1
 
 
 if config_type == 'bin_packing':
@@ -37,7 +38,7 @@ elif config_type == 'cap_set':
     # evaluate_function_mask_half = True
 
     sample_iterator_temperature = 100
-    sample_iterator_no_update_cnt = 5
+    sample_iterator_no_update_cnt = 3
 
     if n_dim == 7:
         sample_llm_api_min_score = 128
@@ -167,33 +168,22 @@ def priority(item: float, bins: np.ndarray) -> np.ndarray:
 elif config_type == 'cap_set':
     
     additional_prompt = \
-f'''I'm working on the {n_dim}-dimensional cap set problem using a greedy algorithm with a priority function to determine vector selection order. Please help me develop a smarter `priority_v2` function by analyzing my reference implementations.
+f'''I'm working on the {n_dim}-dimensional cap set problem using a greedy algorithm with a priority function to determine vector selection order. A cap set is a collection of vectors in {{0,1,2}}^n where no three vectors form an arithmetic line (i.e., for any three distinct vectors a, b, c, if a + c = 2b, then they cannot all appear in the cap set). 
 
 
 ## What I Need
-1. **BOLD EVOLUTION OF PRIORITY FUNCTION**: Please create a novel priority function variant that might outperform my reference implementations. Don't be constrained by my current approaches - take risks and suggest radically different strategies that might lead to breakthroughs.
-2. **MARK ALL TUNABLE PARAMETERS**: For every single element that could potentially be tuned (no matter how minor), mark it with tunable([option1, option2, ...]) wrapper. 
-  This includes but is not limited to:
-    - Parameters and constants
-    - Weighting factors
-    - Thresholds
-    - Logical conditions
-    - Calculation methods
-    - Function selection options
-    - Algorithm hyperparameters
-    - Anything else that might impact priority
+1. **BOLD EVOLUTION OF PRIORITY FUNCTION**: Please create a novel `priority_v2` function that might outperform my reference implementations. Don't be constrained by my current approaches - take risks and suggest radically different strategies that might lead to breakthroughs.
+2. **MARK ALL TUNABLE PARAMETERS**: For every element in the `priority_v2` function that could potentially be tuned, wrap it with tunable([option1, option2, ...]).
   Format examples:
-    - `if x == tunable([number_1, number_2, number_3])`
-    - `sorted(elements, key=lambda x: tunable([x.property_1, x.property_2]))`
-
-**My primary focus is on the conceptual innovation of the priority function itself.** While accurately marking tunable parameters is essential, please dedicate your main effort to designing the *core logic* of a potentially superior function first.
+    - `if x == tunable([num_1, num_2, num_3])`
+    - `y = tunable([np.exp(x), np.log(x)))`
 
 
 ## Task Description
-Please provide a Python function `priority_v2(el: tuple[int, ...]) -> float` that:
-1. Takes an {n_dim}-dimensional vector (with elements in {{0,1,2}})
-2. Returns a priority score - higher scores indicate the vector should be considered earlier for addition to the Cap Set
-3. Any helper functions should be defined within the `priority_v2` function
+Please help me develop a smarter `priority_v2` function by analyzing my reference implementations.
+1. Keep the exact function signature: `def priority_v2(el: tuple[int, ...]) -> float:`.
+2. Any helper functions should be defined within the `priority_v2` function.
+3. No additional libraries may be imported.
 
 
 ## Current Priority Functions
@@ -203,6 +193,7 @@ Below are two reference priority functions I've developed.
     specification = f'''import numpy as np
 import itertools
 import math
+from collections import Counter
 
 
 @funsearch.run

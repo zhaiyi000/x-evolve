@@ -140,7 +140,7 @@ class Evaluator:
 
     def __init__(
             self,
-            database: programs_database.ProgramsDatabase,
+            # database: programs_database.ProgramsDatabase,
             template: code_manipulation.Program,
             function_to_evolve: str,  # RZ: refers to the name of the function to evolve (e.g., 'priority')
             function_to_run: str,  # RZ: refers to the name of the function to run (e.g., 'evaluate')
@@ -148,7 +148,7 @@ class Evaluator:
             timeout_seconds: int = 30,
             sandbox_class: Type[Sandbox] = Sandbox
     ):
-        self._database = database
+        # self._database = database
         self._template = template
         self._function_to_evolve = function_to_evolve
         self._function_to_run = function_to_run
@@ -206,7 +206,7 @@ class Evaluator:
                 return None, timeout
 
             for (test_output, runs_ok), scores_per_test in zip(result_list, scores_per_test_list):
-                if runs_ok and not _calls_ancestor(program, self._function_to_evolve) and test_output is not None:
+                if runs_ok and test_output is not None:
                     if not isinstance(test_output, (int, float)):
                         print(f'RZ=> Error: test_output is {test_output}')
                         raise ValueError('@function.run did not return an int/float score.')

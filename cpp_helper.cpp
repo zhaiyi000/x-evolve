@@ -3,6 +3,8 @@
 #include <unordered_set>
 #include <vector>
 #include <cmath>
+#include <random>
+#include <algorithm>
 
 namespace py = pybind11;
 
@@ -64,6 +66,31 @@ py::array_t<float> block_children_cpp(py::array_t<float> scores,
     return scores;
 }
 
-PYBIND11_MODULE(block_cpp, m) {
+// 使用静态局部变量，确保只初始化一次 RNG（性能更好）
+int weighted_sample(py::array_t<double> probs) {
+    auto buf = probs.request();
+    double* ptr = static_cast<double*>(buf.ptr);
+    size_t n = buf.shape[0];
+
+    std::vector<double> cdf(n);
+    cdf[0] = ptr[0];
+    for (size_t i = 1; i < n; ++i)
+        cdf[i] = cdf[i - 1] + ptr[i];
+
+    // Normalize CDF to [0, 1]
+    double total = cdf[n - 1];
+    for (size_t i = 0; i < n; ++i)
+        cdf[i] /= total;
+
+    // 使用现代 C++ 随机数生成器
+    static thread_local std::mt19937 gen(std::random_device{}());
+    static thread_local std::uniform_real_distribution<double> dist(0.0, 1.0);
+
+    double r = dist(gen);
+    return std::lower_bound(cdf.begin(), cdf.end(), r) - cdf.begin();
+}
+
+PYBIND11_MODULE(cpp_helper, m) {
+    m.def("sample", &weighted_sample, "Weighted random sampler using C++11 RNG");
     m.def("block_children", &block_children_cpp, "C++ version of block_children");
 }

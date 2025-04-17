@@ -4,6 +4,7 @@ import re
 # import random
 import numpy as np
 from config import *
+import cpp_helper
 
 
 FILE_DEBUG_MODE = False
@@ -105,14 +106,16 @@ class SampleIterator:
     
 
     def batch_sample(self, batch_size):
+        print_str = ''
         probability = self.calculate_probability()
         indices_list = []
         try_cnt = 0
         while len(indices_list) < batch_size and try_cnt < batch_size:
             indices = []
             for prob in probability:
-                idx = np.random.choice(len(prob), 1, replace=False, p=prob)
-                indices.append(int(idx))
+                # idx = np.random.choice(len(prob), p=prob)
+                idx = cpp_helper.sample(prob)
+                indices.append(idx)
             indices = tuple(indices)
             if indices not in self.visited:
                 self.visited[indices] = MIN_SCORE
@@ -120,9 +123,9 @@ class SampleIterator:
                 try_cnt = 0
             else:
                 try_cnt += 1
-                print('.', end='')
-        print()
-        return indices_list
+                print_str += '.'
+        print_str += '\n'
+        return indices_list, print_str
     
 
     def update_score(self, instance_indices, score_list):
@@ -141,12 +144,12 @@ class SampleIterator:
         else:
             self.no_update_cnt += 1
 
-        print(f'this best score: {best_score}; best score: {self.best_score}; global score: {self.__class__.max_score_global}; space size: {self.space_size}; measure cnt: {len(self.visited)}')
+        print_str = f'this best score: {best_score}; best score: {self.best_score}; global score: {self.__class__.max_score_global}; space size: {self.space_size}; measure cnt: {len(self.visited)}\n'
         factor = 4 if self.best_score == self.__class__.max_score_global else 1
         if self.space_size == len(self.visited) or self.no_update_cnt == sample_iterator_no_update_cnt * 1:
-            return False
+            return False, print_str
         else:
-            return True
+            return True, print_str
 
     
     def get_final_code(self):
@@ -178,4 +181,4 @@ class SampleIterator:
                 replace_str += '])'
             function_code = function_code[:start] + replace_str + function_code[end:]
             space_i -= 1
-        return function_code
+        return function_code, self.best_score
