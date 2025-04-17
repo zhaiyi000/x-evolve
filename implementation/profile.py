@@ -39,8 +39,8 @@ class Profiler:
         self._tot_evaluate_time = 0
         self._all_sampled_functions: Dict[int, code_manipulation.Function] = {}
 
-        if log_dir:
-            self._writer = SummaryWriter(log_dir=log_dir)
+        # if log_dir:
+        #     self._writer = SummaryWriter(log_dir=log_dir)
 
         self._each_sample_best_program_score = []
         self._each_sample_evaluate_success_program_num = []
@@ -96,7 +96,7 @@ class Profiler:
         self._num_samples += 1
         self._all_sampled_functions[self._num_samples] = programs
         self._record_and_verbose(programs)
-        self._write_tensorboard()
+        # self._write_tensorboard()
         self._write_json(programs)
 
     def _record_and_verbose(self, programs):

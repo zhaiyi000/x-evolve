@@ -1,17 +1,15 @@
-# setup.py
-from setuptools import setup, Extension
-import pybind11
+from setuptools import setup
+from pybind11.setup_helpers import Pybind11Extension, build_ext
 
 ext_modules = [
-    Extension(
-        'block_cpp',
-        ['block_cpp.cpp'],
-        include_dirs=[pybind11.get_include()],
-        language='c++'
-    ),
+    Pybind11Extension(
+        "cpp_helper",              # 模块名
+        ["cpp_helper.cpp"]         # 源文件
+    )
 ]
 
 setup(
-    name='block_cpp',
+    name="cpp_helper",
     ext_modules=ext_modules,
+    cmdclass={"build_ext": build_ext}
 )

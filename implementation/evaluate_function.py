@@ -30,8 +30,7 @@ def cal_intensity(c_1, t_init):
 
 
 def get_exp_decay_probs_fixed_first_prob(length, first_prob=0.4, tol=1e-8):
-    if length < 1:
-        return []
+    assert length > 0
 
     # Binary search λ to make sum(p) = 1 where p0 = first_prob
     def compute_sum(lambd):
@@ -83,6 +82,7 @@ def calculate_score(score_list: list, size: int, replace: bool):
     #     indices = np.random.choice(len(score_list), len(score_list)//2, replace=False)
     #     for idx in indices:
     #         score_list[idx] = min_weight
+    print_str = ''
     while True:
 
         score_dic = {}
@@ -111,16 +111,16 @@ def calculate_score(score_list: list, size: int, replace: bool):
             segment_list = [first_indices] + list(remain_score_dic.values())
         print_segment_list = segment_list[:3]
         for seg in print_segment_list:
-            print(score_list[seg[0]], len(seg), score_list[seg[-1]])
+            print_str += f'{score_list[seg[0]]}, {len(seg)}, {score_list[seg[-1]]}\n'
         seg_indices = np.random.choice(len(segment_list), size=size, p=get_probs(len(segment_list)), replace=replace)
         indices = [np.random.choice(segment_list[seg_idx], size=1)[0] for seg_idx in seg_indices]
         if len(indices) == 2 and indices[0] == indices[1]:
-            print('same indices', [score_list[i] for i in indices])
+            print_str += f'same indices {score_list[indices[0]]} {score_list[indices[1]]}\n'
         else:
             for idx in indices:
-                print(score_list[idx])
+                print_str += f'{score_list[idx]}\n'
             break
-    return indices
+    return indices, print_str
 
     s_min = min(score_list)
     s_max = max(score_list)

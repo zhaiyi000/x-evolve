@@ -29,7 +29,7 @@ import copy
 import threading
 import queue
 from implementation import sample_llm_api
-from config import sample_llm_cnt
+from config import sample_llm_cnt, update_database_cnt
 
 
 class LLM(ABC):
@@ -85,21 +85,24 @@ class Sampler:
             database: programs_database.ProgramsDatabase,
             template: code_manipulation.Program,
             function_to_evolve: str,
-            evaluator: evaluator.Evaluator,
+            evaluator_ins_list: evaluator.Evaluator,
             samples_per_prompt: int = 1,
             max_sample_nums: int | None = None,
             llm_class: Type[LLM] = LLM
     ):
         self._samples_per_prompt = samples_per_prompt
         self._database = database
-        self._evaluator = evaluator
+        self.evaluator_ins_list = evaluator_ins_list
         self._llm = llm_class(samples_per_prompt)
         self._max_sample_nums = max_sample_nums
         self._template = template
         self._function_to_evolve = function_to_evolve
         self._mux_sem = threading.Semaphore(1)
         self._llm_cnt = sample_llm_cnt
+        self._update_database_cnt = update_database_cnt
         self._queue = queue.Queue(max(self._llm_cnt//3, 1))
+
+        self.call_llm_times = 0
 
 
     def launch_llm(self, thread_i, llm):
@@ -109,14 +112,15 @@ class Sampler:
                     # stop the search process if hit global max sample nums
                     if self._max_sample_nums and self._get_global_spaces_nums() >= self._max_sample_nums:
                         # self._queue.put('end')
+                        print(f'{thread_i} launch_llm done!')
                         break
                     self._global_spaces_nums_plus_one()
-                    prompt, parent_score = self._database.get_prompt()
+                    prompt, parent_score, parent_id, island_id, print_str = self._database.get_prompt()
                     llm_ins = llm.calculate_probability()
                 reset_time = time.time()
                 samples = self._llm.draw_samples(llm_ins, prompt.code)
                 sample_time = (time.time() - reset_time) / self._samples_per_prompt
-                self._queue.put((samples, sample_time, llm_ins, parent_score))
+                self._queue.put((samples, sample_time, llm_ins, parent_score, parent_id, island_id, print_str))
             except Exception as err:
                 print('thread_i', thread_i)
                 print('errrrrrr', 'launch_llm', err)
@@ -130,11 +134,21 @@ class Sampler:
         llm = sample_llm_api.EvaluateLLM()
         launch_thread_list: list[threading.Thread] = []
         for thread_i in range(self._llm_cnt):
-            launch_thread = threading.Thread(target=self.launch_llm, args=(thread_i, llm), daemon=True)
+            launch_thread = threading.Thread(target=self.launch_llm, args=(thread_i, llm))
             launch_thread.start()
             launch_thread_list.append(launch_thread)
 
-        call_llm_times = 0
+        update_thread_list: list[threading.Thread] = []
+        for thread_i in range(self._update_database_cnt):
+            update_thread = threading.Thread(target=self.update_database, args=(thread_i, launch_thread_list, llm, profiler))
+            update_thread.start()
+            update_thread_list.append(update_thread)
+
+        for thread in update_thread_list:
+            thread.join()
+
+
+    def update_database(self, thread_i, launch_thread_list, llm, profiler):
         while True:
             try:
                 llm_return_obj = self._queue.get(timeout=10)
@@ -142,58 +156,70 @@ class Sampler:
                 if any([launch_thread.is_alive() for launch_thread in launch_thread_list]):
                     continue
                 else:
-                    print('all tasks done!')
+                    print(f'{thread_i} all tasks done!')
                     break
 
-            samples, sample_time, llm_ins, parent_score = llm_return_obj
             try:
-                self.update_database(samples, sample_time, llm_ins, parent_score, llm, profiler)
+                self.update_database_inner(thread_i, llm_return_obj, llm, profiler)
             except Exception as err:
                 print('update_database errrrrr')
                 print(err)
                 import traceback
                 traceback.print_exc()
-            call_llm_times += 1
-            print('call llm times', call_llm_times)
-    
-    
-    def update_database(self, samples, sample_time, llm_ins, parent_score, llm, profiler):
-        # samples_new = []
-        for llm_name, prompt, sample_ori, sample in samples:
             with self._mux_sem:
-                print(f'\n\n\n-- {parent_score} -- {llm_name} ----prompt-----------')
-                print(prompt)
-                print(f'\n\n\n-- {parent_score} -- {llm_name} ----sample--------')
-                print(sample_ori)
-                print(f'\n\n\n-- {parent_score} -- {llm_name} ----measure-----------')
+                self.call_llm_times += 1
+                print('call llm times', self.call_llm_times)
+    
+    
+    def update_database_inner(self, thread_i, llm_return_obj, llm, profiler):
+        samples, sample_time, llm_ins, parent_score, parent_id, island_id, prompt_print_str = llm_return_obj
+        # samples_new = []
+        for llm_name, prompt, (sample_ori, sample) in samples:
+            with self._mux_sem:
                 tune_sampler = sample_iterator.SampleIterator(code=sample)
-                batch_size = 64
-                MIN_SCORE = -1e10
-                max_score = MIN_SCORE
+            batch_size = 64
+            print_log = ''
             while True:
                 with self._mux_sem:
-                    indices = tune_sampler.batch_sample(batch_size=batch_size)
+                    indices, print_str = tune_sampler.batch_sample(batch_size=batch_size)
+                    print_log += print_str
                 
-                res_data, timeout = self._evaluator.analyse(tune_sampler, indices)
+                print_log += f'launch {len(indices)} evaluate tasks\n'
+                res_data, timeout = self.evaluator_ins_list[thread_i].analyse(tune_sampler, indices)
                 if timeout:
-                    print('errrrr timeout')
+                    print_log += 'errrrr timeout\n'
+                    # with self._mux_sem:
+                    #     print(print_log)
+                    # print('errrrr timeout')
                     break
                 new_function_list, evaluate_time, score_list, decisions_list = res_data
                 
                 with self._mux_sem:
                     profiler.register_function_list(new_function_list, sample_time, evaluate_time, score_list, decisions_list)
-                    max_score = max([max_score, *[x for x in score_list if x]])
+
+                    break_tag, print_str = tune_sampler.update_score(indices, score_list)
+                    print_log += print_str
                     
-                    if tune_sampler.update_score(indices, score_list) is False:
-                        print('sampler suggest should end sample, break', llm_ins.llm_name)
+                    if break_tag is False:
+                        print_log += f'sampler suggest should end sample, break {llm_ins.llm_name}\n'
+                        # print('sampler suggest should end sample, break', llm_ins.llm_name)
                         break
 
             with self._mux_sem:
-                print(f'\n\n\n-- {parent_score} -- {llm_name} ----end-----------')
-                # if max_score != MIN_SCORE and max_score > max(parent_score):
-                if max_score != MIN_SCORE:
+                print(f'\n\n\n-- {parent_score} {parent_id} {island_id} -- {llm_name} ----prompt-----------')
+                print(prompt_print_str)
+                print('----------------------------')
+                print(prompt)
+                print(f'\n\n\n-- {parent_score} {parent_id} {island_id} -- {llm_name} ----sample--------')
+                print(sample_ori)
+                print(f'\n\n\n-- {parent_score} {parent_id} {island_id} -- {llm_name} ----measure-----------')
+                print(print_log)
+                print(f'\n\n\n-- {parent_score} {parent_id} {island_id} -- {llm_name} ----end-----------')
+                
+                function_code, max_score = tune_sampler.get_final_code()
+
+                if max_score != sample_iterator.MIN_SCORE:
                     print('register to database')
-                    function_code = tune_sampler.get_final_code()
                     new_function, _ = evaluator._sample_to_program(
                         function_code, self._template, self._function_to_evolve)
 
@@ -201,7 +227,9 @@ class Sampler:
                         new_function,
                         max_score,
                         model=llm_ins.llm_name,
-                        parent_score=parent_score
+                        parent_score=parent_score,
+                        island_id=island_id,
+                        parent_id=parent_id
                     )
                 llm.call_llm(llm_ins, parent_score, max_score)
 

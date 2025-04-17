@@ -24,6 +24,8 @@ import os
 from config import config_type, log_dir, additional_prompt, specification, measure_timeout, n_dim
 import random
 
+print('pid', os.getpid())
+
 
 def _trim_preface_of_body(sample: str) -> str:
     """Trim the redundant descriptions/symbols/'def' declaration before the function body.
@@ -81,58 +83,59 @@ def _trim_preface_of_body(sample: str) -> str:
             if line.startswith(end_str):
                 break
         return code
-    return sample
+    print(sample)
+    raise Exception('can not find core code')
+
+
+def request_inner(llm_ins: sample_llm_api.LLM, headers, json_data):
+    response = requests.post(llm_ins.request_http, headers=headers, json=json_data)
+
+    if response.status_code != 200:
+        print('response.status_code', llm_ins.model, response.status_code, response.text)
+        raise Exception('request net error')
+
+    data = json.loads(response.text)
+
+    if llm_ins.provider and data['provider'] != llm_ins.provider:
+        print(f'specific provider: {llm_ins.provider}, actual provicer: {data["provider"]}')
+        raise Exception('not the specific privoder')
+    
+    response_content = data['choices'][0]['message']['content']
+    return response, response_content
 
 
 def request(llm_ins: sample_llm_api.LLM, prompt: str):
-    for retry_i in range(5):
-        try:
-            headers = {
-                'Authorization': llm_ins.api_key,
+    headers = {
+        'Authorization': llm_ins.api_key,
+    }
+    temperature = random.uniform(0.1, 1.5)
+
+    json_data = {
+        'model': llm_ins.model,
+        'messages': [
+            {
+                "role": "system",
+                "content": "You are a helpful assistant."
+            },
+            {
+                "content": prompt,
+                "role": "user"
             }
-            temperature = random.uniform(0.1, 1.5)
+        ],
+        # 'temperature': 0.1
+    }
+    if llm_ins.provider:
+        json_data['provider'] = {
+            'order': [
+                llm_ins.provider,
+            ],
+            'allow_fallbacks': False
+        }
 
-            json_data = {
-                'model': llm_ins.model,
-                'messages': [
-                    {
-                        "role": "system",
-                        "content": "You are a helpful assistant."
-                    },
-                    {
-                        "content": prompt,
-                        "role": "user"
-                    }
-                ],
-                # 'temperature': 0.1
-            }
-            if llm_ins.provider:
-                json_data['provider'] = {
-                    'order': [
-                        llm_ins.provider,
-                    ],
-                    'allow_fallbacks': False
-                }
+    response_1, response_content_1_ori = request_inner(llm_ins, headers, json_data)
+    response_content_1 = _trim_preface_of_body(response_content_1_ori)
 
-            response = requests.post(llm_ins.request_http, headers=headers, json=json_data)
-
-            if response.status_code != 200:
-                print('response.status_code', llm_ins.model, response.status_code, response.text)
-                raise Exception('request net error')
-
-            data = json.loads(response.text)
-
-            if llm_ins.provider and data['provider'] != llm_ins.provider:
-                print(f'specific provider: {llm_ins.provider}, actual provicer: {data["provider"]}')
-                raise Exception('not the specific privoder')
-            
-            response_content = data['choices'][0]['message']['content']
-            return llm_ins.llm_name+'  '+str(temperature), prompt, response_content
-        except Exception as e:
-            print(f'errr111__{retry_i}', llm_ins.llm_name, response.text)
-            print(e)
-            time.sleep(1)
-    raise Exception('fail 5 times')
+    return llm_ins.llm_name+'  '+str(temperature), prompt, (response_content_1_ori, response_content_1)
 
 
 class LLMAPI(sampler.LLM):
@@ -152,17 +155,7 @@ class LLMAPI(sampler.LLM):
     def _draw_sample(self, llm_ins: sample_llm_api.LLM, content_list: list) -> str:
         prompt_list = [self._additional_prompt + '```python\n' + content + '```' for content in content_list]
         futures = [request(llm_ins, prompt) for prompt in prompt_list]
-        response_list = []
-        for future in futures:
-            llm_name, prompt, response_ori = future
-            if self._trim:
-                try:
-                    response = _trim_preface_of_body(response_ori)
-                except Exception as err:
-                    print('errrrrr response_ori', response_ori)
-                    raise err
-            response_list.append((llm_name, prompt, response_ori, response))
-        return response_list
+        return futures
 
 
 import sys
@@ -242,7 +235,7 @@ class Sandbox(evaluator.Sandbox):
         the output of this function is the score of a given program.
         RZ: PLEASE NOTE THAT this SandBox is only designed for bin-packing problem.
         """
-        print(f'launch {len(program_list)} evaluate tasks')
+        # print(f'launch {len(program_list)} evaluate tasks')
 
         dataset = inputs[test_input]
         futures = [self.executor.submit(_compile_and_run_function, program, function_to_run, function_to_evolve, dataset, self._numba_accelerate) for program in program_list]
@@ -258,7 +251,7 @@ class Sandbox(evaluator.Sandbox):
                     except ProcessLookupError:
                         pass
                 self.executor = ProcessPoolExecutor(max_workers=min(os.cpu_count(), 64))
-                print('sanbox timeout errrr')
+                # print('sanbox timeout errrr')
                 return None, True
         return result_list, False
 
