@@ -71,7 +71,7 @@ def get_probs(length):
     return len_prob_dic[length]
 
 
-def calculate_score(score_list: list, size: int, replace: bool):
+def calculate_score(score_list: list, length_list: list, size: int, replace: bool):
     # evaluate_function_list.append((score_list, visit_list, length_list))
     # with open(evaluate_function_file, 'wb') as f:
     #     pickle.dump(evaluate_function_list, f)
@@ -86,10 +86,11 @@ def calculate_score(score_list: list, size: int, replace: bool):
     while True:
 
         score_dic = {}
-        for score_i, score in enumerate(score_list):
+        assert len(score_list) == len(length_list)
+        for score_i, (score, length) in enumerate(zip(score_list, length_list)):
             if score not in score_dic:
                 score_dic[score] = []
-            score_dic[score].append(score_i)
+            score_dic[score].append((score_i, length))
 
         score_list_list = list(score_dic.items())
         score_list_list.sort(key=lambda x: -x[0])
@@ -111,9 +112,21 @@ def calculate_score(score_list: list, size: int, replace: bool):
             segment_list = [first_indices] + list(remain_score_dic.values())
         print_segment_list = segment_list[:3]
         for seg in print_segment_list:
-            print_str += f'{score_list[seg[0]]}, {len(seg)}, {score_list[seg[-1]]}\n'
+            print_str += f'{score_list[seg[0][0]]}, {len(seg)}, {score_list[seg[-1][0]]}\n'
         seg_indices = np.random.choice(len(segment_list), size=size, p=get_probs(len(segment_list)), replace=replace)
-        indices = [np.random.choice(segment_list[seg_idx], size=1)[0] for seg_idx in seg_indices]
+        
+        indices = []
+        for seg_idx in seg_indices:
+            idx_len_list = segment_list[seg_idx]
+            clu_indices = [x[0] for x in idx_len_list]
+            lengths = [x[1] for x in idx_len_list]
+
+            normalized_lengths = (np.array(lengths) - min(lengths)) / (max(lengths) - min(lengths) + 1e-6)
+            probabilities = sample_iterator.softmax(-normalized_lengths, temperature=0.5)
+            idx = np.random.choice(clu_indices, p=probabilities)
+            indices.append(idx)
+        
+        # indices = [np.random.choice(segment_list[seg_idx], size=1)[0] for seg_idx in seg_indices]
         if len(indices) == 2 and indices[0] == indices[1]:
             print_str += f'same indices {score_list[indices[0]]} {score_list[indices[1]]}\n'
         else:

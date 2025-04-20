@@ -170,8 +170,7 @@ f'''I'm working on the {n_dim}-dimensional cap set problem using a greedy algori
 ## Task Description
 Please help me develop a smarter `priority_v2` function by analyzing my reference implementations.
 1. Keep the exact function signature: `def priority_v2(el: tuple[int, ...]) -> float:`.
-2. Any helper functions should be defined within the `priority_v2` function.
-3. No additional libraries may be imported.
+2. Output only Python code, without imports, helper functions, or comments.
 
 
 ## Current Priority Functions

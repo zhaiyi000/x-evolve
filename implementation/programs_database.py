@@ -159,7 +159,7 @@ class ProgramsDatabase:
         length_list = [len(str(node.program)) for node in nodes]
         
         functions_per_prompt = min(len(nodes), self._functions_per_prompt)
-        best_indices, print_str = evaluate_function.calculate_score(score_list=score_list, size=functions_per_prompt, replace=True)
+        best_indices, print_str = evaluate_function.calculate_score(score_list=score_list, length_list=length_list, size=functions_per_prompt, replace=True)
         if len(best_indices) == 1:
             best_indices = [best_indices[0], best_indices[0]]
         best_nodes = [nodes[i] for i in best_indices]
