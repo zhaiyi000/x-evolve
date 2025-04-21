@@ -12,8 +12,9 @@ if config_type == 'cap_set':
 
 
 log_dir = os.environ.get('LOG_DIR', 'logs')
-sample_llm_cnt = 10
-update_database_cnt = 1
+sample_llm_cnt = 30
+update_database_cnt = 3
+island_cnt = 16
 
 
 if config_type == 'bin_packing':
@@ -60,11 +61,11 @@ elif config_type == 'admissible_set':
     # evaluate_function_mask_half = True
 
     sample_iterator_temperature = 100
-    sample_iterator_no_update_cnt = 1
+    sample_iterator_no_update_cnt = 3
 
     sample_llm_api_min_score = 548
 
-    measure_timeout = 60
+    measure_timeout = 15
 
 elif config_type == 'cycle_graphs':
     evaluate_function_c_v1 = 0.1
@@ -182,8 +183,8 @@ f'''I'm working on the {n_dim}-dimensional cap set problem using a greedy algori
 ## Task Description
 Please help me develop a smarter `priority_v2` function by analyzing my reference implementations.
 1. Keep the exact function signature: `def priority_v2(el: tuple[int, ...]) -> float:`.
-2. Any helper functions should be defined within the `priority_v2` function.
-3. No additional libraries may be imported.
+2. Output only Python code, without imports, helper functions, or comments. Keep it as short and simple as possible.
+3. Use only basic logical rules, such as position, symmetry, and element presence, while avoiding complex mathematical modeling (including statistical calculations).
 
 
 ## Current Priority Functions
@@ -192,8 +193,6 @@ Below are two reference priority functions I've developed.
 
     specification = f'''import numpy as np
 import itertools
-import math
-from collections import Counter
 
 
 @funsearch.run
@@ -346,54 +345,41 @@ def priority(el: tuple[int, ...], num_nodes: int, n: int) -> float:
 elif config_type == 'admissible_set':
     
     additional_prompt = \
-'''I'm working on the constant-weight admissible set problem with dimension 12 and weight 7, using a greedy algorithm that relies on a priority function to determine the vector selection order. Please help me develop a smarter `priority_v2` function by analyzing my reference implementations.
+'''I'm working on the constant-weight admissible set problem with dimension 12 and weight 7, using a greedy algorithm that relies on a priority function to determine the vector selection order.
 
 
 ## What I Need
-1. **BOLD EVOLUTION OF PRIORITY FUNCTION**: Please create a novel priority function variant that might outperform my reference implementations. Don't be constrained by my current approaches - take risks and suggest radically different strategies that might lead to breakthroughs.
-2. **MARK ALL TUNABLE PARAMETERS**: For every single element that could potentially be tuned (no matter how minor), mark it with tunable([option1, option2, ...]) wrapper. 
-  This includes but is not limited to:
-    - Parameters and constants
-    - Weighting factors
-    - Thresholds
-    - Logical conditions
-    - Calculation methods
-    - Function selection options
-    - Algorithm hyperparameters
-    - Anything else that might impact priority
+1. **BOLD EVOLUTION OF PRIORITY FUNCTION**: Please create a novel `priority_v2` function that might outperform my reference implementations. Don't be constrained by my current approaches - take risks and suggest radically different strategies that might lead to breakthroughs.
+2. **MARK ALL TUNABLE PARAMETERS**: For every element in the `priority_v2` function that could potentially be tuned, wrap it with tunable([option1, option2, ...]).
   Format examples:
-    - `if x == tunable([number_1, number_2, number_3])`
-    - `sorted(elements, key=lambda x: tunable([x.property_1, x.property_2]))`
-
-**My primary focus is on the conceptual innovation of the priority function itself.** While accurately marking tunable parameters is essential, please dedicate your main effort to designing the *core logic* of a potentially superior function first.
+    - `if x == tunable([num_1, num_2, num_3])`
+    - `y = tunable([np.exp(x), np.log(x)))`
 
 
 ## Task Description
-Please provide a Python function `priority_v2(el: np.ndarray) -> float` that:
-1. Takes an 12-dimensional vector (with elements in {0,1,2})
-2. Returns a priority score - higher scores indicate the vector should be considered earlier for addition to the admissible set
-3. **Use NumPy vectorized operations as much as possible**
-4. Any helper functions should be defined within the `priority_v2` function
+Please help me develop a smarter `priority_v2` function by analyzing my reference implementations.
+1. Keep the exact function signature: `def priority_v2(el: tuple[int, ...]) -> float:`.
+2. Output only Python code, without imports, helper functions, or comments. Keep it as short and simple as possible.
+3. Use only basic logical rules, such as position, symmetry, and element presence, while avoiding complex mathematical modeling (including statistical calculations).
 
 
 ## Current Priority Functions
 Below are two reference priority functions I've developed.
 '''
 
-    specification = r'''import itertools
-import math
+    specification = '''import itertools
 import numpy as np
 
 
 def solve(n: int, w: int) -> np.ndarray:
     """Generates a constant-weight admissible set I(n, w)."""
-    import block_cpp
+    import cpp_helper
     import pickle
     with open('admissible_set_scores.pkl', 'rb') as f:
         children, scores = pickle.load(f)
     for child_index, child in enumerate(children):
         if scores[child_index] == 0:
-            scores[child_index] = priority(np.array(child))
+            scores[child_index] = priority(child.tolist())
 
     max_admissible_set = np.empty((0, n), dtype=np.int32)
     while np.any(scores != -np.inf):
@@ -401,7 +387,7 @@ def solve(n: int, w: int) -> np.ndarray:
         max_index = np.argmax(scores)
         child = children[max_index]
         # block_children(scores, max_admissible_set, child)
-        block_cpp.block_children(scores, max_admissible_set, child)
+        cpp_helper.block_children(scores, max_admissible_set, child)
         max_admissible_set = np.concatenate([max_admissible_set, child[None]], axis=0)
 
     return max_admissible_set
@@ -414,11 +400,11 @@ def evaluate(kargs) -> int:
 
 
 @funsearch.evolve
-def priority(el: np.ndarray) -> float:
+def priority(el: tuple[int, ...]) -> float:
     """Computes a priority score for an element to determine its order of addition to the admissible set.
     
     Args:
-        el: A numpy array representing an element with n=12 positions, where each position contains 0, 1, or 2. Elements have weight w=7 (meaning 7 non-zero values).
+        el: A tuple representing a vector with n=12 positions, where each position can be 0, 1, or 2. The element has a weight w=7, meaning it contains 7 non-zero values.
 
     Return:
         A float score where higher values indicate higher priority for inclusion in the admissible set.

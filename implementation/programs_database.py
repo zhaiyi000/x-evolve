@@ -29,12 +29,13 @@ import scipy
 
 from implementation import code_manipulation
 from implementation import evaluate_function
+from implementation import sample_iterator
 import heapq, queue, math
 from config import log_dir
 import os
 import json
 import natsort, glob
-from config import sample_llm_api_min_score
+from config import sample_llm_api_min_score, island_cnt
 import random
 import copy
 
@@ -129,7 +130,7 @@ class ProgramsDatabase:
         self._template: code_manipulation.Program = template
         self._function_to_evolve: str = function_to_evolve
         self._functions_per_prompt: int = 2
-        self._island_cnt = 10
+        self._island_cnt = island_cnt
         self._nodes: list[list[Node]] = [[] for _ in range(self._island_cnt)]
         self._best_score: float = -float('inf')
 
@@ -159,7 +160,7 @@ class ProgramsDatabase:
         length_list = [len(str(node.program)) for node in nodes]
         
         functions_per_prompt = min(len(nodes), self._functions_per_prompt)
-        best_indices, print_str = evaluate_function.calculate_score(score_list=score_list, size=functions_per_prompt, replace=True)
+        best_indices, print_str = evaluate_function.calculate_score(score_list=score_list, length_list=length_list, size=functions_per_prompt, replace=True)
         if len(best_indices) == 1:
             best_indices = [best_indices[0], best_indices[0]]
         best_nodes = [nodes[i] for i in best_indices]
@@ -278,14 +279,20 @@ class ProgramsDatabase:
 
             # node_cnt = sum(len(nodes) for nodes in self._nodes)
             # assert node_cnt > 0
-            if self.save_idx % 1000 == 0:
+            if self.save_idx % (island_cnt * 100) == 0:
                 max_score_list = [max([node.score for node in nodes]) for nodes in self._nodes]
                 discard_indices, keep_indices = get_lowest_half_indices(max_score_list)
                 assert len(discard_indices) == len(keep_indices)
 
                 for idx, keep_idx in zip(discard_indices, keep_indices):
                     print(f'copy best node from {keep_idx} {max_score_list[keep_idx]} to {idx} {max_score_list[idx]}')
-                    keep_node = [node for node in self._nodes[keep_idx] if node.score == max_score_list[keep_idx]][0]
+                    source_nodes = [(node, len(str(node.program))) for node in self._nodes[keep_idx] if node.score == max_score_list[keep_idx]]
+                    lengths = [x[1] for x in source_nodes]
+
+                    normalized_lengths = (np.array(lengths) - min(lengths)) / (max(lengths) - min(lengths) + 1e-6)
+                    probabilities = sample_iterator.softmax(-normalized_lengths, temperature=0.5)
+                    keep_node = source_nodes[np.random.choice(len(source_nodes), p=probabilities)][0]
+                    
                     keep_node = Node(visit_count=0, score=keep_node.score, program=keep_node.program, model=keep_node.model, parent_score=keep_node.parent_score, island_id=idx, reset_tag=True, node_id=self.save_idx, parent_id=keep_node.parent_id)
                     self._nodes[idx] = [keep_node]
                     self.dump_node(keep_node, keep_node.score, idx)
