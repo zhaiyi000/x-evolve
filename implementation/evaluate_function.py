@@ -119,11 +119,11 @@ def calculate_score(score_list: list, length_list: list, size: int, replace: boo
         for seg_idx in seg_indices:
             idx_len_list = segment_list[seg_idx]
             clu_indices = [x[0] for x in idx_len_list]
-            lengths = [x[1] for x in idx_len_list]
+            # lengths = [x[1] for x in idx_len_list]
 
-            normalized_lengths = (np.array(lengths) - min(lengths)) / (max(lengths) - min(lengths) + 1e-6)
-            probabilities = sample_iterator.softmax(-normalized_lengths, temperature=0.5)
-            idx = np.random.choice(clu_indices, p=probabilities)
+            # normalized_lengths = (np.array(lengths) - min(lengths)) / (max(lengths) - min(lengths) + 1e-6)
+            # probabilities = sample_iterator.softmax(-normalized_lengths, temperature=1.0)
+            idx = np.random.choice(clu_indices)
             indices.append(idx)
         
         # indices = [np.random.choice(segment_list[seg_idx], size=1)[0] for seg_idx in seg_indices]

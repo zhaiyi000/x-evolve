@@ -12,8 +12,9 @@ if config_type == 'cap_set':
 
 
 log_dir = os.environ.get('LOG_DIR', 'logs')
-sample_llm_cnt = 10
-update_database_cnt = 1
+sample_llm_cnt = 30
+update_database_cnt = 3
+island_cnt = 16
 
 
 if config_type == 'bin_packing':
@@ -170,7 +171,8 @@ f'''I'm working on the {n_dim}-dimensional cap set problem using a greedy algori
 ## Task Description
 Please help me develop a smarter `priority_v2` function by analyzing my reference implementations.
 1. Keep the exact function signature: `def priority_v2(el: tuple[int, ...]) -> float:`.
-2. Output only Python code, without imports, helper functions, or comments.
+2. Output only Python code, without imports, helper functions, or comments. Keep it as short and simple as possible.
+3. Use only basic logical rules, such as position, symmetry, and element presence, while avoiding complex mathematical modeling (including statistical calculations).
 
 
 ## Current Priority Functions
@@ -179,8 +181,6 @@ Below are two reference priority functions I've developed.
 
     specification = f'''import numpy as np
 import itertools
-import math
-from collections import Counter
 
 
 @funsearch.run

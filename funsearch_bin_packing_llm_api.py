@@ -21,7 +21,7 @@ from concurrent.futures import ProcessPoolExecutor, TimeoutError
 import re
 import gc
 import os
-from config import config_type, log_dir, additional_prompt, specification, measure_timeout, n_dim
+from config import config_type, log_dir, additional_prompt, specification, measure_timeout, n_dim, island_cnt
 import random
 
 print('pid', os.getpid())
@@ -267,7 +267,7 @@ if __name__ == '__main__':
         inputs = {'12_7': {'n': 12, 'w': 7}}
     else:
         raise Exception('wrong case')
-    global_max_sample_num = 2000  # if it is set to None, funsearch will execute an endless loop
+    global_max_sample_num = island_cnt * 1000  # if it is set to None, funsearch will execute an endless loop
     
     import shutil, os
     if os.path.exists(log_dir):
