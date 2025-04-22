@@ -2,7 +2,7 @@ import os
 
 
 config_type = os.environ.get('CONFIG_TYPE', None)
-if config_type not in ['bin_packing', 'cap_set', 'admissible_set']:
+if config_type not in ['bin_packing', 'cap_set', 'admissible_set', 'symmetry_admissible_set']:
     raise Exception('wrong type')
 n_dim = None
 if config_type == 'cap_set':
@@ -66,6 +66,20 @@ elif config_type == 'admissible_set':
     sample_llm_api_min_score = 548
 
     measure_timeout = 15
+
+elif config_type == 'symmetry_admissible_set':
+    # evaluate_function_c_v1 = 0.
+    # evaluate_function_c_l1 = 0.
+    # evaluate_function_c_1 = 1
+    # evaluate_function_temperature = 10
+    # evaluate_function_mask_half = True
+
+    sample_iterator_temperature = 10000
+    sample_iterator_no_update_cnt = 3
+
+    sample_llm_api_min_score = 548
+
+    measure_timeout = 30
 
 else:
     raise Exception('wrong type')
@@ -301,5 +315,108 @@ def priority(el: tuple[int, ...]) -> float:
     """
     n = 12
     w = 7
+    return 0
+'''
+
+
+elif config_type == 'symmetry_admissible_set':
+    
+    additional_prompt = \
+'''I'm working on the constant-weight admissible set problem with dimension 21 and weight 15, using a greedy algorithm that relies on a priority function to determine the vector selection order.
+
+
+## What I Need
+1. **BOLD EVOLUTION OF PRIORITY FUNCTION**: Please create a novel `priority_v2` function that might outperform my reference implementations. Don't be constrained by my current approaches - take risks and suggest radically different strategies that might lead to breakthroughs.
+2. **MARK ALL TUNABLE PARAMETERS**: For every element in the `priority_v2` function that could potentially be tuned, wrap it with tunable([option1, option2, ...]).
+  Format examples:
+    - `if x == tunable([num_1, num_2, num_3])`
+    - `y = tunable([np.exp(x), np.log(x)))`
+
+
+## Task Description
+Please help me develop a smarter `priority_v2` function by analyzing my reference implementations.
+1. Keep the exact function signature: `def priority_v2(el: tuple[int, ...]) -> float:`.
+2. Output only Python code, without imports, helper functions, or comments. Keep it as short and simple as possible.
+3. Use only basic logical rules, such as position, symmetry, and element presence, while avoiding complex mathematical modeling (including statistical calculations).
+
+
+## Current Priority Functions
+Below are two reference priority functions I've developed.
+'''
+
+    specification = '''import itertools
+import numpy as np
+
+
+def expand_admissible_set(
+    pre_admissible_set: list[tuple[int, ...]],
+    TRIPLES
+) -> list[tuple[int, ...]]:
+    """Expands a pre-admissible set into an admissible set."""
+    num_groups = len(pre_admissible_set[0])
+    admissible_set = []
+    for row in pre_admissible_set:
+        rotations = [[] for _ in range(num_groups)]
+        for i in range(num_groups):
+            x, y, z = TRIPLES[row[i]]
+            rotations[i].append((x, y, z))
+            if not x == y == z:
+                rotations[i].append((z, x, y))
+                rotations[i].append((y, z, x))
+        product = list(itertools.product(*rotations))
+        concatenated = [sum(xs, ()) for xs in product]
+        admissible_set.extend(concatenated)
+    return admissible_set
+
+def solve(n: int, w: int) -> tuple[np.ndarray, np.ndarray]:
+    """Generates a symmetric constant-weight admissible set I(n, w)."""
+    
+    TRIPLES = [(0, 0, 0), (0, 0, 1), (0, 0, 2), (0, 1, 2), (0, 2, 1), (1, 1, 1), (2, 2, 2)]
+    INT_TO_WEIGHT = [0, 1, 1, 2, 2, 3, 3]
+    
+    num_groups = n // 3
+    assert 3 * num_groups == n
+    import cpp_helper
+
+    # # Compute the scores of all valid (weight w) children.
+    # valid_children = []
+    # for child in itertools.product(range(7), repeat=num_groups):
+    #     weight = sum(INT_TO_WEIGHT[x] for x in child)
+    #     if weight == w:
+    #         valid_children.append(np.array(child, dtype=np.int32))
+
+    valid_children = np.load('admissible_set_21_15.npy')
+    valid_children_expand = np.load('admissible_set_21_15_expand.npy')
+    valid_children_expand = [tuple(xs) for xs in valid_children_expand.tolist()]
+
+    valid_scores = np.array(
+        [priority(xs) for xs in valid_children_expand]
+    )
+
+    pre_admissible_set = cpp_helper.greedy_search(
+        num_groups, valid_scores, valid_children
+    )
+    return pre_admissible_set, np.array(expand_admissible_set(pre_admissible_set, TRIPLES))
+
+
+@funsearch.run
+def evaluate(kargs) -> int:
+    """Returns the size of the expanded admissible set."""
+    _, admissible_set = solve(kargs['n'], kargs['w'])
+    return len(admissible_set)
+
+
+@funsearch.evolve
+def priority(el: tuple[int, ...]) -> float:
+    """Computes a priority score for an element to determine its order of addition to the admissible set.
+    
+    Args:
+        el: A tuple representing a vector with n=21 positions, where each position can be 0, 1, or 2. The element has a weight w=15, meaning it contains 15 non-zero values.
+
+    Return:
+        A float score where higher values indicate higher priority for inclusion in the admissible set.
+    """
+    n = 21
+    w = 15
     return 0
 '''

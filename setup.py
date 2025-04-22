@@ -3,8 +3,9 @@ from pybind11.setup_helpers import Pybind11Extension, build_ext
 
 ext_modules = [
     Pybind11Extension(
-        "cpp_helper",              # 模块名
-        ["cpp_helper.cpp"]         # 源文件
+        "cpp_helper",
+        ["cpp_helper.cpp"],
+        extra_compile_args=["-O3"]
     )
 ]
 

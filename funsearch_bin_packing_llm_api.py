@@ -265,6 +265,8 @@ if __name__ == '__main__':
         inputs = {n_dim: n_dim}
     elif config_type == 'admissible_set':
         inputs = {'12_7': {'n': 12, 'w': 7}}
+    elif config_type == 'symmetry_admissible_set':
+        inputs = {'21_15': {'n': 21, 'w': 15}}
     else:
         raise Exception('wrong case')
     global_max_sample_num = island_cnt * 1000  # if it is set to None, funsearch will execute an endless loop
