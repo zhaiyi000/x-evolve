@@ -4,17 +4,35 @@ import os
 config_type = os.environ.get('CONFIG_TYPE', None)
 if config_type not in ['bin_packing', 'cap_set', 'admissible_set', 'symmetry_admissible_set']:
     raise Exception('wrong type')
+
+
 n_dim = None
+w_dim = None
+n_w_dim = None
+
 if config_type == 'cap_set':
     n_dim = os.environ.get('N_DIM', None)
     assert n_dim != None
     n_dim = int(n_dim)
+elif config_type == 'symmetry_admissible_set':
+    n_w_dim = os.environ.get('N_W_DIM', None)
+    assert n_w_dim in ['21_15', '24_17']
+    if n_w_dim == '21_15':
+        n_dim = 21
+        w_dim = 15
+    elif n_w_dim == '24_17':
+        n_dim = 24
+        w_dim = 17
+    else:
+        raise Exception('wrong type')
+else:
+    raise Exception('wrong type')
 
 
 log_dir = os.environ.get('LOG_DIR', 'logs')
 sample_llm_cnt = 30
 update_database_cnt = 3
-island_cnt = 16
+island_cnt = 1
 
 
 if config_type == 'bin_packing':
@@ -79,7 +97,12 @@ elif config_type == 'symmetry_admissible_set':
 
     sample_llm_api_min_score = 548
 
-    measure_timeout = 30
+    if n_w_dim == '21_15':
+        measure_timeout = 30
+    elif n_w_dim == '24_17':
+        measure_timeout = 120
+    else:
+        raise Exception('wrong n w dim')
 
 else:
     raise Exception('wrong type')
@@ -322,7 +345,7 @@ def priority(el: tuple[int, ...]) -> float:
 elif config_type == 'symmetry_admissible_set':
     
     additional_prompt = \
-'''I'm working on the constant-weight admissible set problem with dimension 21 and weight 15, using a greedy algorithm that relies on a priority function to determine the vector selection order.
+f'''I'm working on the constant-weight admissible set problem with dimension {n_dim} and weight {w_dim}, using a greedy algorithm that relies on a priority function to determine the vector selection order.
 
 
 ## What I Need
@@ -337,14 +360,14 @@ elif config_type == 'symmetry_admissible_set':
 Please help me develop a smarter `priority_v2` function by analyzing my reference implementations.
 1. Keep the exact function signature: `def priority_v2(el: tuple[int, ...]) -> float:`.
 2. Output only Python code, without imports, helper functions, or comments. Keep it as short and simple as possible.
-3. Use only basic logical rules, such as position, symmetry, and element presence, while avoiding complex mathematical modeling (including statistical calculations).
+3. Use a basic heuristic approach; avoid complex statistical methods.
 
 
 ## Current Priority Functions
 Below are two reference priority functions I've developed.
 '''
 
-    specification = '''import itertools
+    specification = f'''import itertools
 import numpy as np
 
 
@@ -385,8 +408,8 @@ def solve(n: int, w: int) -> tuple[np.ndarray, np.ndarray]:
     #     if weight == w:
     #         valid_children.append(np.array(child, dtype=np.int32))
 
-    valid_children = np.load('admissible_set_21_15.npy')
-    valid_children_expand = np.load('admissible_set_21_15_expand.npy')
+    valid_children = np.load('admissible_set_{n_w_dim}.npy')
+    valid_children_expand = np.load('admissible_set_{n_w_dim}_expand.npy')
     valid_children_expand = [tuple(xs) for xs in valid_children_expand.tolist()]
 
     valid_scores = np.array(
@@ -411,12 +434,12 @@ def priority(el: tuple[int, ...]) -> float:
     """Computes a priority score for an element to determine its order of addition to the admissible set.
     
     Args:
-        el: A tuple representing a vector with n=21 positions, where each position can be 0, 1, or 2. The element has a weight w=15, meaning it contains 15 non-zero values.
+        el: A tuple representing a vector with n={n_dim} positions, where each position can be 0, 1, or 2. The element has a weight w={w_dim}, meaning it contains {w_dim} non-zero values.
 
     Return:
         A float score where higher values indicate higher priority for inclusion in the admissible set.
     """
-    n = 21
-    w = 15
+    n = {n_dim}
+    w = {w_dim}
     return 0
 '''

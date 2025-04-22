@@ -21,7 +21,7 @@ from concurrent.futures import ProcessPoolExecutor, TimeoutError
 import re
 import gc
 import os
-from config import config_type, log_dir, additional_prompt, specification, measure_timeout, n_dim, island_cnt
+from config import config_type, log_dir, additional_prompt, specification, measure_timeout, n_w_dim, n_dim, w_dim, island_cnt
 import random
 
 print('pid', os.getpid())
@@ -266,10 +266,10 @@ if __name__ == '__main__':
     elif config_type == 'admissible_set':
         inputs = {'12_7': {'n': 12, 'w': 7}}
     elif config_type == 'symmetry_admissible_set':
-        inputs = {'21_15': {'n': 21, 'w': 15}}
+        inputs = {n_w_dim: {'n': n_dim, 'w': w_dim}}
     else:
         raise Exception('wrong case')
-    global_max_sample_num = island_cnt * 1000  # if it is set to None, funsearch will execute an endless loop
+    global_max_sample_num = island_cnt * 100000  # if it is set to None, funsearch will execute an endless loop
     
     import shutil, os
     if os.path.exists(log_dir):

@@ -151,7 +151,9 @@ class Sampler:
     def update_database(self, thread_i, launch_thread_list, llm, profiler):
         while True:
             try:
+                print('wait llm response')
                 llm_return_obj = self._queue.get(timeout=10)
+                print('get llm response')
             except queue.Empty:
                 if any([launch_thread.is_alive() for launch_thread in launch_thread_list]):
                     continue
