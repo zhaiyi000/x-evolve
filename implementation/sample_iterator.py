@@ -6,7 +6,7 @@ import numpy as np
 import libcst as cst
 from libcst.metadata import PositionProvider
 from redbaron import *
-from config import *
+from .config import *
 
 
 FILE_DEBUG_MODE = False
@@ -237,7 +237,7 @@ class SampleIterator:
         modified_module= self.decisions_replace(
             module = self._module,
             tunables_info = self._tunables,
-            replace_indices = decisions
+            decisions = decisions
         )
         # RedBaron 找到所有形如'# 注释'的注释
         red = RedBaron(self._code)

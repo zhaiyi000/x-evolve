@@ -4,3 +4,11 @@ logs/
 .DS_Store
 .idea
 .vscode/
+zy1/
+zy2/
+baseline_206.7/
+lm_search/output*/
+512/
+log_loop1_model3_21/
+lm_search/dataset*/
+lm_search/tokenizer*/

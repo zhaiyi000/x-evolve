@@ -9,7 +9,7 @@ import torch
 import torch.nn.functional as F
 from transformers import GPT2LMHeadModel
 from funsearch_bin_packing_llm_api import Sandbox, specification
-import bin_packing_utils
+from implementation import bin_packing_utils
 from typing import Dict
 from implementation import code_manipulation
 from implementation import sample_iterator
@@ -18,10 +18,11 @@ from implementation import evaluator
 import math
 import copy
 
-
+tokenizer_path = f'tokenizer_512_short_1'
+model_path = f'output_512_short_1/checkpoint-100000'
 
 def get_model():
-    tokenizer = Tokenizer.from_pretrained('tokenizer')
+    tokenizer = Tokenizer.from_pretrained(tokenizer_path)
     device = 1
 
     # gen_kwargs = {
@@ -36,7 +37,7 @@ def get_model():
     #     # "temperature": 0,
     # }
 
-    model: GPT2LMHeadModel = AutoModelForCausalLM.from_pretrained('output2/checkpoint-2000')
+    model: GPT2LMHeadModel = AutoModelForCausalLM.from_pretrained(model_path)
     model.to(device)
     return tokenizer, model, device
 
@@ -44,8 +45,7 @@ def get_model():
 
 def get_data():
     files = []
-    files.extend(glob.glob('../zy1/funsearch_llm_api/samples/*.json'))
-    files.extend(glob.glob('../zy2/funsearch_llm_api/samples/*.json'))
+    files.extend(glob.glob('/root/funsearch/log_loop1_model3_21/funsearch_llm_api/samples/*.json'))
     files = natsort.natsorted(files)
 
     score_list = []
@@ -82,7 +82,8 @@ def get_data():
 
 
 def pad_tensor(tensors, pad_value, device):
-    max_len = 1920
+    tokenizer = Tokenizer.from_pretrained(tokenizer_path)
+    max_len = tokenizer.model_max_length
     tensors = [F.pad(seq, (0, max_len - len(seq)), value=pad_value) for seq in tensors]
     tensors = torch.stack(tensors)
     tensors = tensors.to(device)
@@ -98,6 +99,8 @@ def evaluate(code_list):
     program_list = []
     for generated_code in code_list:
         new_function, program = evaluator._sample_to_program(generated_code, template, function_to_evolve)
+        with open('program.txt', 'a') as f:
+            f.write(program + '\n')
         program_list.append(program)
     result_list = exector.run(program_list, function_to_run=function_to_run, function_to_evolve=function_to_evolve, inputs=bin_packing_or3, test_input='OR3', timeout_seconds=30)
     return result_list
@@ -146,9 +149,34 @@ def main():
             input_ids = torch.tensor(input_ids, dtype=torch.long)
             labels = torch.tensor(labels, dtype=torch.long)
             labels_ids = labels.clone()
-
+            
             num_elements = len(labels_ids)
             replace_num = math.ceil(num_elements * 0.15)
+
+            # with torch.no_grad():
+            #     input_ids = torch.cat([input_ids, labels_ids])
+            #     attention_mask = torch.ones_like(input_ids, dtype=torch.long)
+            #     max_len = tokenizer.model_max_length
+            #     input_ids = F.pad(input_ids, (0, max_len - len(input_ids)), value = 0)
+            #     input_ids = input_ids.to(device)
+            #     attention_mask = F.pad(attention_mask, (0, max_len - len(attention_mask)), value = 0)
+            #     attention_mask = attention_mask.to(device)
+            #     print(input_ids.shape)
+            #     # 需要把input_idspad成1920，参考84行
+            #     # 打印input_ids.shape看看  64*1920
+            #     outputs = model(input_ids=input_ids, attention_mask=attention_mask)
+            #     logits = outputs.logits
+            #     # 打印logits.shape看看  64*21*1880
+            #     print(logits.shape)
+            #     probs = torch.softmax(logits, dim=-1)
+            #     # topprobs = torch.topk(probs, 1, dim=-1) 
+            #     # 分两步来做
+            #     # 1. 直接取最小的15%
+            #     _, idx= torch.sort(probs)
+            #     replace_indices = idx[:replace_num]
+            #     # 2. 按概率采样15%
+            #     # replace_indices = torch.multinomial(sorted_probs, num_samples=replace_num)
+
 
             if replace_num > 0:
                 replace_indices = torch.randperm(num_elements)[:replace_num]
@@ -191,7 +219,14 @@ def main():
         print()
 
         result_list = evaluate(code_list)
-        this_score_list = [x[0] for x in result_list if x[1]]
+        with open('code.txt', 'a') as f:
+            for code in code_list:
+                f.write(code + '\n')
+        print(result_list)
+        if result_list[1] ==  False:
+            this_score_list = [x[0] for x in result_list[0] if x[1]]
+        else:
+            raise TimeoutError('timeout')
         print('this max score:', max(this_score_list), 'global score:', max_score)
         if max(this_score_list) > max_score:
             max_score = max(this_score_list)
