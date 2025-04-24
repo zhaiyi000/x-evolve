@@ -25,8 +25,6 @@ elif config_type == 'symmetry_admissible_set':
         w_dim = 17
     else:
         raise Exception('wrong type')
-else:
-    raise Exception('wrong type')
 
 
 log_dir = os.environ.get('LOG_DIR', 'logs')
@@ -79,7 +77,7 @@ elif config_type == 'admissible_set':
     # evaluate_function_mask_half = True
 
     sample_iterator_temperature = 100
-    sample_iterator_no_update_cnt = 3
+    sample_iterator_no_update_cnt = 1
 
     sample_llm_api_min_score = 548
 
@@ -92,15 +90,16 @@ elif config_type == 'symmetry_admissible_set':
     # evaluate_function_temperature = 10
     # evaluate_function_mask_half = True
 
-    sample_iterator_temperature = 10000
-    sample_iterator_no_update_cnt = 3
+    sample_iterator_no_update_cnt = 1
 
     sample_llm_api_min_score = 548
 
     if n_w_dim == '21_15':
-        measure_timeout = 30
+        measure_timeout = 45
+        sample_iterator_temperature = 10000
     elif n_w_dim == '24_17':
-        measure_timeout = 120
+        measure_timeout = 180
+        sample_iterator_temperature = 100000
     else:
         raise Exception('wrong n w dim')
 
@@ -349,18 +348,17 @@ f'''I'm working on the constant-weight admissible set problem with dimension {n_
 
 
 ## What I Need
-1. **BOLD EVOLUTION OF PRIORITY FUNCTION**: Please create a novel `priority_v2` function that might outperform my reference implementations. Don't be constrained by my current approaches - take risks and suggest radically different strategies that might lead to breakthroughs.
+1. **BOLD EVOLUTION OF PRIORITY FUNCTION**: Please create an improved `priority_v2` function that might outperform my reference implementations. Don't be constrained by my current approaches - take risks and suggest radically different strategies that might lead to breakthroughs.
 2. **MARK ALL TUNABLE PARAMETERS**: For every element in the `priority_v2` function that could potentially be tuned, wrap it with tunable([option1, option2, ...]).
   Format examples:
-    - `if x == tunable([num_1, num_2, num_3])`
-    - `y = tunable([np.exp(x), np.log(x)))`
+    - `if x == tunable([x1, x2, x3]):`
+    - `z = tunable([x + y, x * (y + 1))`
 
 
 ## Task Description
-Please help me develop a smarter `priority_v2` function by analyzing my reference implementations.
-1. Keep the exact function signature: `def priority_v2(el: tuple[int, ...]) -> float:`.
-2. Output only Python code, without imports, helper functions, or comments. Keep it as short and simple as possible.
-3. Use a basic heuristic approach; avoid complex statistical methods.
+Please help me develop an improved `priority_v2` function by analyzing my reference implementations.
+1. Use only rule-based heuristics; do not use **any** statistical features.
+2. Output Python code only, without any comments. Keep the implementation as **short** as possible.
 
 
 ## Current Priority Functions
