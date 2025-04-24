@@ -3,10 +3,8 @@ import os
 import re
 # import random
 import numpy as np
-import libcst as cst
-from libcst.metadata import PositionProvider
-from redbaron import *
-from .config import *
+from config import *
+import cpp_helper
 
 
 FILE_DEBUG_MODE = False
@@ -298,14 +296,16 @@ class SampleIterator:
     
 
     def batch_sample(self, batch_size):
+        print_str = ''
         probability = self.calculate_probability()
         indices_list = []
         try_cnt = 0
         while len(indices_list) < batch_size and try_cnt < batch_size:
             indices = []
             for prob in probability:
-                idx = np.random.choice(len(prob), 1, replace=False, p=prob)
-                indices.append(int(idx))
+                # idx = np.random.choice(len(prob), p=prob)
+                idx = cpp_helper.sample(prob)
+                indices.append(idx)
             indices = tuple(indices)
             if indices not in self.visited:
                 self.visited[indices] = MIN_SCORE
@@ -313,9 +313,9 @@ class SampleIterator:
                 try_cnt = 0
             else:
                 try_cnt += 1
-                print('.', end='')
-        print()
-        return indices_list
+                print_str += '.'
+        print_str += '\n'
+        return indices_list, print_str
     
 
     def update_score(self, instance_indices, score_list):
@@ -334,51 +334,41 @@ class SampleIterator:
         else:
             self.no_update_cnt += 1
 
-        print(f'this best socre: {best_score}; best score: {self.best_score}; global score: {self.__class__.max_score_global}; space size: {self.space_size}; measure cnt: {len(self.visited)}')
+        print_str = f'this best socre: {best_score}; best score: {self.best_score}; global score: {self.__class__.max_score_global}; space size: {self.space_size}; measure cnt: {len(self.visited)}\n'
         factor = 4 if self.best_score == self.__class__.max_score_global else 1
         if self.space_size == len(self.visited) or self.no_update_cnt == sample_iterator_no_update_cnt * 1:
-            return False
+            return False, print_str
         else:
-            return True
+            return True, print_str
 
-    
-    # def get_final_code(self):
-    #     top_cnt = 1
-    #     reocrds = list(self.visited.items())
-    #     np.random.shuffle(reocrds)
-    #     reocrds.sort(key=lambda x: x[1], reverse=True)
-    #     reocrds = reocrds[:top_cnt]
-    #     indices_list = [x[0] for x in reocrds]
-    #     function_code = self._code
-    #     space_i = len(self.tunable) - 1
-    #     for match, space in zip(reversed(self.matches), reversed(self.tunable)):
-    #         idx_set = set()
-    #         for indices in indices_list:
-    #             idx_set.add(indices[space_i])
-    #         start, end = match.span()
-    #         if len(idx_set) == 0:
-    #             raise Exception('len idx set equal 0')
-    #         elif len(idx_set) == 1:
-    #             replace_str = space[list(idx_set)[0]]
-    #         else:
-    #             idx_list = list(idx_set)
-    #             idx_list.sort()
-    #             replace_str = 'tunable(['
-    #             for idx_i, idx in enumerate(idx_list):
-    #                 if idx_i != 0:
-    #                     replace_str += ', '
-    #                 replace_str += space[idx]
-    #             replace_str += '])'
-    #         function_code = function_code[:start] + replace_str + function_code[end:]
-    #         space_i -= 1
-    #     return function_code
     
     def get_final_code(self):
         top_cnt = 1
-        records = list(self.visited.items())
-        np.random.shuffle(records)
-        records.sort(key=lambda x: x[1], reverse=True)
-        records = records[:top_cnt]
-        indices = records[top_cnt-1][0]
-        f_code = self.get_instance(indices=indices)[0]
-        return f_code
+        reocrds = list(self.visited.items())
+        np.random.shuffle(reocrds)
+        reocrds.sort(key=lambda x: x[1], reverse=True)
+        reocrds = reocrds[:top_cnt]
+        indices_list = [x[0] for x in reocrds]
+        function_code = self._code
+        space_i = len(self.tunable) - 1
+        for match, space in zip(reversed(self.matches), reversed(self.tunable)):
+            idx_set = set()
+            for indices in indices_list:
+                idx_set.add(indices[space_i])
+            start, end = match.span()
+            if len(idx_set) == 0:
+                raise Exception('len idx set equal 0')
+            elif len(idx_set) == 1:
+                replace_str = space[list(idx_set)[0]]
+            else:
+                idx_list = list(idx_set)
+                idx_list.sort()
+                replace_str = 'tunable(['
+                for idx_i, idx in enumerate(idx_list):
+                    if idx_i != 0:
+                        replace_str += ', '
+                    replace_str += space[idx]
+                replace_str += '])'
+            function_code = function_code[:start] + replace_str + function_code[end:]
+            space_i -= 1
+        return function_code, self.best_score

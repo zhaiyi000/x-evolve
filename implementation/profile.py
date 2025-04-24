@@ -39,8 +39,8 @@ class Profiler:
         self._tot_evaluate_time = 0
         self._all_sampled_functions: Dict[int, code_manipulation.Function] = {}
 
-        if log_dir:
-            self._writer = SummaryWriter(log_dir=log_dir)
+        # if log_dir:
+        #     self._writer = SummaryWriter(log_dir=log_dir)
 
         self._each_sample_best_program_score = []
         self._each_sample_evaluate_success_program_num = []
@@ -96,7 +96,7 @@ class Profiler:
         self._num_samples += 1
         self._all_sampled_functions[self._num_samples] = programs
         self._record_and_verbose(programs)
-        self._write_tensorboard()
+        # self._write_tensorboard()
         self._write_json(programs)
 
     def _record_and_verbose(self, programs):
@@ -105,16 +105,16 @@ class Profiler:
         evaluate_time = programs.evaluate_time
         score = programs.score
         # log attributes of the programs
-        with open(self._log_file, 'a') as f:
-            f.write(f'================= Evaluated Programs =================\n')
-            f.write(f'{function_str}\n')
-            f.write(f'------------------------------------------------------\n')
-            f.write(f'Score        : {str(score)}\n')
-            f.write(f'Sample time  : {str(sample_time)}\n')
-            f.write(f'Evaluate time: {str(evaluate_time)}\n')
-            f.write(f'Sample orders: {str(self._num_samples)}\n')
-            f.write(f'Decisions: {str(programs.decisions)}\n')
-            f.write(f'======================================================\n\n\n')
+        # with open(self._log_file, 'a') as f:
+        #     f.write(f'================= Evaluated Programs =================\n')
+        #     f.write(f'{function_str}\n')
+        #     f.write(f'------------------------------------------------------\n')
+        #     f.write(f'Score        : {str(score)}\n')
+        #     f.write(f'Sample time  : {str(sample_time)}\n')
+        #     f.write(f'Evaluate time: {str(evaluate_time)}\n')
+        #     f.write(f'Sample orders: {str(self._num_samples)}\n')
+        #     f.write(f'Decisions: {str(programs.decisions)}\n')
+        #     f.write(f'======================================================\n\n\n')
 
         # update best programs
         if programs.score is not None and score > self._cur_best_program_score:

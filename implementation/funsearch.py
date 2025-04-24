@@ -28,6 +28,7 @@ from implementation import programs_database
 from implementation import sampler
 from implementation import profile
 from implementation import sample_iterator
+from config import update_database_cnt
 
 
 def _extract_function_names(specification: str) -> Tuple[str, str]:
@@ -74,25 +75,25 @@ def main(
     else:
         profiler = profile.Profiler(log_dir)
 
-    evaluator_ins = evaluator.Evaluator(
-        database,
+    evaluator_ins_list = [evaluator.Evaluator(
+        # database,
         template,
         function_to_evolve,
         function_to_run,
         inputs,
         timeout_seconds=30,
         sandbox_class=sandbox_class,
-    )
+    ) for _ in range(update_database_cnt)]
 
     # We send the initial implementation to be analysed by one of the evaluators.
     initial = template.get_function(function_to_evolve).body
-    (sample_template, evaluate_time, score_list, decisions_list), _ = evaluator_ins.analyse(sample_iterator.SampleIterator(initial), [[]])
+    (sample_template, evaluate_time, score_list, decisions_list), _ = evaluator_ins_list[0].analyse(sample_iterator.SampleIterator(initial), [[]])
     profiler.register_function_list(sample_template, None, evaluate_time, score_list, decisions_list)
     new_function, _ = evaluator._sample_to_program(initial, template, function_to_evolve)
-    database.register_program(new_function, max(score_list))
+    database.register_program(new_function, max(score_list), model=None, parent_score=None, parent_id=None, island_id=-1)
 
     # Set global max sample nums.
-    sampler_ins = sampler.Sampler(database, template, function_to_evolve, evaluator_ins, max_sample_nums=max_sample_nums, llm_class=llm_class)
+    sampler_ins = sampler.Sampler(database, template, function_to_evolve, evaluator_ins_list, max_sample_nums=max_sample_nums, llm_class=llm_class)
 
     # This loop can be executed in parallel on remote sampler machines. As each
     # sampler enters an infinite loop, without parallelization only the first

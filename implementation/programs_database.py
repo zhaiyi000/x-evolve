@@ -29,11 +29,15 @@ import scipy
 
 from implementation import code_manipulation
 from implementation import evaluate_function
+from implementation import sample_iterator
 import heapq, queue, math
 from config import log_dir
 import os
 import json
 import natsort, glob
+from config import sample_llm_api_min_score, island_cnt
+import random
+import copy
 
 # RZ: I change the original code "tuple[float, ...]" to "Tuple[float, ...]"
 Signature = Tuple[float, ...]
@@ -72,6 +76,15 @@ def reduce_score(scores_per_test: ScoresPerTest) -> float:
 #     return tuple(scores_per_test[k] for k in sorted(scores_per_test.keys()))
 
 
+def get_lowest_half_indices(max_score_list):
+    n = len(max_score_list)
+    half_n = n // 2
+    indices = list(range(n))
+    random.shuffle(indices)
+    sorted_indices = sorted(indices, key=lambda i: max_score_list[i])
+    return sorted_indices[:half_n], sorted_indices[half_n:]
+
+
 @dataclasses.dataclass(frozen=True)
 class Prompt:
     """A prompt produced by the ProgramsDatabase, to be sent to Samplers.
@@ -94,6 +107,12 @@ class Node:
     # score_update: float
     # node_id: int
     program: code_manipulation.Function
+    model: str
+    parent_score: list[float]
+    island_id: int
+    reset_tag: bool
+    node_id: int
+    parent_id: list[int]
 
     # @property
     # def score_avg(self):
@@ -111,7 +130,8 @@ class ProgramsDatabase:
         self._template: code_manipulation.Program = template
         self._function_to_evolve: str = function_to_evolve
         self._functions_per_prompt: int = 2
-        self._nodes: list[Node] = []
+        self._island_cnt = island_cnt
+        self._nodes: list[list[Node]] = [[] for _ in range(self._island_cnt)]
         self._best_score: float = -float('inf')
 
         node_dir = os.path.join(log_dir, 'node')
@@ -121,35 +141,45 @@ class ProgramsDatabase:
             with open(file, 'r') as f:
                 data = json.load(f)
             program = code_manipulation.Function(**data['program'])
-            node = Node(visit_count=data['visit_count'], score=data['score'], program=program)
-            self._nodes.append(node)
+            node = Node(visit_count=data['visit_count'], score=data['score'], program=program, model=data['model'], parent_score=data['parent_score'], island_id=data['island_id'], reset_tag=data['reset_tag'], node_id=data['node_id'], parent_id=data['parent_id'])
+            if node.reset_tag:
+                self._nodes[node.island_id] = []
+            self._nodes[node.island_id].append(node)
+        self.save_idx = 0
+        if len(node_files) > 0:
+            self.save_idx = int(os.path.splitext(os.path.basename(node_files[-1]))[0]) + 1
         print(f'find {len(node_files)} node files')
 
 
     def get_prompt(self) -> Prompt:
-        nodes = self._nodes
+        island_id = np.random.choice(self._island_cnt)
+
+        nodes = self._nodes[island_id]
         score_list = [node.score for node in nodes]
         visit_list = [node.visit_count for node in nodes]
         length_list = [len(str(node.program)) for node in nodes]
         
-        probabilities = evaluate_function.calculate_score(score_list=score_list, visit_list=visit_list, length_list=length_list)
-        
-        functions_per_prompt = min(len(self._nodes), self._functions_per_prompt)
-        best_nodes = np.random.choice(nodes, size=functions_per_prompt, p=probabilities, replace=False)
+        functions_per_prompt = min(len(nodes), self._functions_per_prompt)
+        best_indices, print_str = evaluate_function.calculate_score(score_list=score_list, length_list=length_list, size=functions_per_prompt, replace=True)
+        if len(best_indices) == 1:
+            best_indices = [best_indices[0], best_indices[0]]
+        best_nodes = [nodes[i] for i in best_indices]
         best_nodes = list(best_nodes)
 
         best_nodes.sort(key=lambda x: x.score)
 
         sorted_implementations = []
         parent_score = []
+        parent_id = []
         for node in best_nodes:
             node.visit_count += 1
             sorted_implementations.append(node.program)
             parent_score.append(node.score)
+            parent_id.append(node.node_id)
 
         version_generated = len(sorted_implementations) + 1
         code = self._generate_prompt(sorted_implementations)
-        return Prompt(code, version_generated), parent_score
+        return Prompt(code, version_generated), parent_score, parent_id, island_id, print_str
 
     def _generate_prompt(
             self,
@@ -187,12 +217,29 @@ class ProgramsDatabase:
         # Replace functions in the template with the list constructed here.
         prompt = dataclasses.replace(self._template, functions=versioned_functions)
         return str(prompt)
+    
+
+    def dump_node(self, node, score, island_id):
+        node_dir = os.path.join(log_dir, 'node')
+        os.makedirs(node_dir, exist_ok=True)
+        node_file = os.path.join(node_dir, f'{self.save_idx}.json')
+        self.save_idx += 1
+        with open(node_file, 'w') as f:
+            json.dump(dataclasses.asdict(node), f)
+
+        if score > self._best_score:
+            self._best_score = score
+            print(f'Best score increased to {score}, island {island_id}')
 
 
     def register_program(
             self,
             program: code_manipulation.Function,
             scores_per_test: ScoresPerTest,
+            model,
+            parent_score,
+            parent_id,
+            island_id: int
             # **kwargs  # RZ: add this for profiling
     ) -> None:
         """Registers `program` in the specified island."""
@@ -203,16 +250,49 @@ class ProgramsDatabase:
             score = reduce_score(scores_per_test)
         else:
             raise Exception('unkonw data type')
+        
+        if island_id == -1:
+            node_cnt = sum(len(nodes) for nodes in self._nodes)
+            if node_cnt > 0:
+                print('have nodes yet, not need to register root')
+                return
 
-        node = Node(visit_count=0, score=score, program=program)
-        self._nodes.append(node)
+            for island_id in range(self._island_cnt):
+                node = Node(visit_count=0, score=score, program=program, model=model, parent_score=parent_score, island_id=island_id, reset_tag=False, node_id=self.save_idx, parent_id=parent_id)
+                self._nodes[island_id].append(node)
+                self.dump_node(node, score, island_id)
+        else:
+            parent_id_match: list = copy.deepcopy(parent_id)
+            assert len(parent_id_match) > 0
+            nodes = self._nodes[island_id]
+            for node in nodes:
+                if node.node_id in parent_id_match:
+                    parent_id_match = [x for x in parent_id_match if x != node.node_id]
 
-        node_dir = os.path.join(log_dir, 'node')
-        os.makedirs(node_dir, exist_ok=True)
-        node_file = os.path.join(node_dir, f'{len(self._nodes)-1}.json')
-        with open(node_file, 'w') as f:
-            json.dump(dataclasses.asdict(node), f)
+            if len(parent_id_match) > 0:
+                print('island have reset, ignore this register')
+                return
 
-        if score > self._best_score:
-            self._best_score = score
-            print('Best score increased to %s' % score)
+            node = Node(visit_count=0, score=score, program=program, model=model, parent_score=parent_score, island_id=island_id, reset_tag=False, node_id=self.save_idx, parent_id=parent_id)
+            self._nodes[island_id].append(node)
+            self.dump_node(node, score, island_id)
+
+            # node_cnt = sum(len(nodes) for nodes in self._nodes)
+            # assert node_cnt > 0
+            if self.save_idx % (island_cnt * 100000) == 0:
+                max_score_list = [max([node.score for node in nodes]) for nodes in self._nodes]
+                discard_indices, keep_indices = get_lowest_half_indices(max_score_list)
+                assert len(discard_indices) == len(keep_indices)
+
+                for idx, keep_idx in zip(discard_indices, keep_indices):
+                    print(f'copy best node from {keep_idx} {max_score_list[keep_idx]} to {idx} {max_score_list[idx]}')
+                    source_nodes = [(node, len(str(node.program))) for node in self._nodes[keep_idx] if node.score == max_score_list[keep_idx]]
+                    lengths = [x[1] for x in source_nodes]
+
+                    normalized_lengths = (np.array(lengths) - min(lengths)) / (max(lengths) - min(lengths) + 1e-6)
+                    probabilities = sample_iterator.softmax(-normalized_lengths, temperature=0.5)
+                    keep_node = source_nodes[np.random.choice(len(source_nodes), p=probabilities)][0]
+                    
+                    keep_node = Node(visit_count=0, score=keep_node.score, program=keep_node.program, model=keep_node.model, parent_score=keep_node.parent_score, island_id=idx, reset_tag=True, node_id=self.save_idx, parent_id=keep_node.parent_id)
+                    self._nodes[idx] = [keep_node]
+                    self.dump_node(keep_node, keep_node.score, idx)

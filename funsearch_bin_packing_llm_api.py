@@ -21,7 +21,10 @@ from concurrent.futures import ProcessPoolExecutor, TimeoutError
 import re
 import gc
 import os
-from config import config_type, log_dir, additional_prompt, specification
+from config import config_type, log_dir, additional_prompt, specification, measure_timeout, n_w_dim, n_dim, w_dim, island_cnt
+import random
+
+print('pid', os.getpid())
 
 
 def _trim_preface_of_body(sample: str) -> str:
@@ -53,69 +56,89 @@ def _trim_preface_of_body(sample: str) -> str:
         line = lines[lineno]
         # find the first 'def' statement in the given code
         if line.startswith(start_str):
-            func_body_lineno = lineno
+            func_body_lineno = lineno + 1
             find_def_declaration = True
             break
     if find_def_declaration:
         code = ''
         sign = False
-        for line in lines[func_body_lineno + 1:]:
+
+        comment_symbol = None
+        line = lines[func_body_lineno].strip()
+        if line.startswith("'''"):
+            comment_symbol = "'''"
+        elif line.startswith('"""'):
+            comment_symbol = '"""'
+        
+        if comment_symbol:
+            if line == comment_symbol:
+                func_body_lineno += 1
+            while True:
+                line = lines[func_body_lineno].strip()
+                func_body_lineno += 1
+                if line.endswith(comment_symbol):
+                    break
+            
+        for line in lines[func_body_lineno:]:
             code += line + '\n'
             if line.startswith(end_str):
                 sign = True
             if sign and line.strip()[-1] != '\\':
                 break
         return code
-    return sample
+    print(sample)
+    raise Exception('can not find core code')
+
+
+def request_inner(llm_ins: sample_llm_api.LLM, headers, json_data):
+    response = requests.post(llm_ins.request_http, headers=headers, json=json_data)
+
+    if response.status_code != 200:
+        print('response.status_code', llm_ins.model, response.status_code, response.text)
+        raise Exception('request net error')
+
+    data = json.loads(response.text)
+
+    if llm_ins.provider and data['provider'] != llm_ins.provider:
+        print(f'specific provider: {llm_ins.provider}, actual provicer: {data["provider"]}')
+        raise Exception('not the specific privoder')
+    
+    response_content = data['choices'][0]['message']['content']
+    return response, response_content
 
 
 def request(llm_ins: sample_llm_api.LLM, prompt: str):
-    for retry_i in range(5):
-        try:
-            headers = {
-                'Authorization': llm_ins.api_key,
+    headers = {
+        'Authorization': llm_ins.api_key,
+    }
+    temperature = random.uniform(0.1, 1.5)
+
+    json_data = {
+        'model': llm_ins.model,
+        'messages': [
+            {
+                "role": "system",
+                "content": "You are a helpful assistant."
+            },
+            {
+                "content": prompt,
+                "role": "user"
             }
+        ],
+        # 'temperature': 0.1
+    }
+    if llm_ins.provider:
+        json_data['provider'] = {
+            'order': [
+                llm_ins.provider,
+            ],
+            'allow_fallbacks': False
+        }
 
-            json_data = {
-                'model': llm_ins.model,
-                'messages': [
-                    {
-                        "role": "system",
-                        "content": "You are a helpful assistant."
-                    },
-                    {
-                        "content": prompt,
-                        "role": "user"
-                    }
-                ],
-            }
-            if llm_ins.provider:
-                json_data['provider'] = {
-                    'order': [
-                        llm_ins.provider,
-                    ],
-                    'allow_fallbacks': False
-                }
+    response_1, response_content_1_ori = request_inner(llm_ins, headers, json_data)
+    response_content_1 = _trim_preface_of_body(response_content_1_ori)
 
-            response = requests.post(llm_ins.request_http, headers=headers, json=json_data)
-
-            if response.status_code != 200:
-                print('response.status_code', response.status_code, response.text)
-                raise Exception('request net error')
-
-            data = json.loads(response.text)
-
-            if llm_ins.provider and data['provider'] != llm_ins.provider:
-                print(f'specific provider: {llm_ins.provider}, actual provicer: {data["provider"]}')
-                raise Exception('not the specific privoder')
-            
-            response_content = data['choices'][0]['message']['content']
-            return llm_ins.llm_name, prompt, response_content
-        except Exception as e:
-            print(f'errr111__{retry_i}', llm_ins.llm_name, response.text)
-            print(e)
-            time.sleep(1)
-    return llm_ins.llm_name, prompt, prompt
+    return llm_ins.llm_name+'  '+str(temperature), prompt, (response_content_1_ori, response_content_1)
 
 
 class LLMAPI(sampler.LLM):
@@ -133,19 +156,25 @@ class LLMAPI(sampler.LLM):
         return self._draw_sample(llm_ins, [prompt] * self._samples_per_prompt)
 
     def _draw_sample(self, llm_ins: sample_llm_api.LLM, content_list: list) -> str:
-        prompt_list = ['\n'.join([content, self._additional_prompt]) for content in content_list]
+        prompt_list = [self._additional_prompt + '```python\n' + content + '```' for content in content_list]
         futures = [request(llm_ins, prompt) for prompt in prompt_list]
-        response_list = []
-        for future in futures:
-            llm_name, prompt, response_ori = future
-            if self._trim:
-                try:
-                    response = _trim_preface_of_body(response_ori)
-                except Exception as err:
-                    print('errrrrr response_ori', response_ori)
-                    raise err
-            response_list.append((llm_name, prompt, response_ori, response))
-        return response_list
+        return futures
+
+
+import sys
+import os
+class HideOutput:
+    """上下文管理器，用于抑制标准输出和标准错误"""
+    def __enter__(self):
+        self._original_stdout = sys.stdout
+        self._original_stderr = sys.stderr
+        sys.stdout = open(os.devnull, 'w')
+        sys.stderr = open(os.devnull, 'w')
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        sys.stdout.close()
+        sys.stderr.close()
+        sys.stdout = self._original_stdout
+        sys.stderr = self._original_stderr
 
 
 def _compile_and_run_function(program, function_to_run, function_to_evolve, dataset, numba_accelerate):
@@ -159,11 +188,12 @@ def _compile_and_run_function(program, function_to_run, function_to_evolve, data
         # compile the program, and maps the global func/var/class name to its address
         all_globals_namespace = {}
         # execute the program, map func/var/class to global namespace
-        exec(program, all_globals_namespace)
-        # get the pointer of 'function_to_run'
-        function_to_run = all_globals_namespace[function_to_run]
-        # return the execution results
-        results = function_to_run(dataset)
+        with HideOutput():
+            exec(program, all_globals_namespace)
+            # get the pointer of 'function_to_run'
+            function_to_run = all_globals_namespace[function_to_run]
+            # return the execution results
+            results = function_to_run(dataset)
         # the results must be int or float
         if not isinstance(results, (int, float)):
             return None, False
@@ -208,14 +238,14 @@ class Sandbox(evaluator.Sandbox):
         the output of this function is the score of a given program.
         RZ: PLEASE NOTE THAT this SandBox is only designed for bin-packing problem.
         """
-        print(f'launch {len(program_list)} evaluate tasks')
+        # print(f'launch {len(program_list)} evaluate tasks')
 
         dataset = inputs[test_input]
         futures = [self.executor.submit(_compile_and_run_function, program, function_to_run, function_to_evolve, dataset, self._numba_accelerate) for program in program_list]
         result_list = []
         for future in futures:
             try:
-                result = future.result(timeout=15)
+                result = future.result(timeout=measure_timeout)
                 result_list.append(result)
             except TimeoutError:
                 for pid in self.executor._processes:  # 访问内部进程PID
@@ -224,7 +254,7 @@ class Sandbox(evaluator.Sandbox):
                     except ProcessLookupError:
                         pass
                 self.executor = ProcessPoolExecutor(max_workers=min(os.cpu_count(), 64))
-                print('sanbox timeout errrr')
+                # print('sanbox timeout errrr')
                 return None, True
         return result_list, False
 
@@ -235,10 +265,14 @@ if __name__ == '__main__':
     if config_type == 'bin_packing':
         inputs = {'OR3': bin_packing_utils.datasets['OR3']}
     elif config_type == 'cap_set':
-        inputs = {'8': 8}
+        inputs = {n_dim: n_dim}
+    elif config_type == 'admissible_set':
+        inputs = {'12_7': {'n': 12, 'w': 7}}
+    elif config_type == 'symmetry_admissible_set':
+        inputs = {n_w_dim: {'n': n_dim, 'w': w_dim}}
     else:
         raise Exception('wrong case')
-    global_max_sample_num = 1000  # if it is set to None, funsearch will execute an endless loop
+    global_max_sample_num = island_cnt * 100000  # if it is set to None, funsearch will execute an endless loop
     
     import shutil, os
     if os.path.exists(log_dir):

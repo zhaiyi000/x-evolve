@@ -2,6 +2,7 @@ import numpy as np
 import math
 from implementation import sample_iterator 
 from config import *
+from sklearn.cluster import KMeans
 # from cluster import Cluster
 
 '''
@@ -20,12 +21,57 @@ def cal_intensity(c_1, t_init):
     if config_type == 'bin_packing':
         return 1 - math.exp(c_1 * (t_init - 1))
     elif config_type == 'cap_set':
-        return math.exp(c_1 * -t_init) - math.exp(c_1 * -1)
+        # return math.exp(c_1 * -t_init) - math.exp(c_1 * -1)
+        return 1 - t_init
+    elif config_type == 'admissible_set':
+        raise Exception('wrong type')
     else:
         raise Exception('wrong type')
 
 
-def calculate_score(score_list: list, visit_list: list, length_list: list):
+def get_exp_decay_probs_fixed_first_prob(length, first_prob=0.4, tol=1e-8):
+    assert length > 0
+
+    # Binary search λ to make sum(p) = 1 where p0 = first_prob
+    def compute_sum(lambd):
+        return sum(first_prob * np.exp(-lambd * i) for i in range(length))
+
+    # Binary search for λ
+    low, high = 0.00001, 100.0
+    for search_i in range(100):
+        mid = (low + high) / 2
+        total = compute_sum(mid)
+        if abs(total - 1.0) < tol:
+            break
+        if total > 1.0:
+            low = mid
+        else:
+            high = mid
+
+    # Final λ
+    lambd = (low + high) / 2
+
+    # Now compute actual probs
+    probs = [first_prob * np.exp(-lambd * i) for i in range(length)]
+    probs = np.array(probs)
+    probs /= probs.sum()  # Just to clean up any float noise
+    
+    print('search_i', search_i)
+    print('lambd', lambd)
+    print('length', length)
+    print('probs', probs)
+
+    return probs
+
+len_prob_dic = {}
+def get_probs(length):
+    if length not in len_prob_dic:
+        probs = get_exp_decay_probs_fixed_first_prob(length=length)
+        len_prob_dic[length] = probs
+    return len_prob_dic[length]
+
+
+def calculate_score(score_list: list, length_list: list, size: int, replace: bool):
     # evaluate_function_list.append((score_list, visit_list, length_list))
     # with open(evaluate_function_file, 'wb') as f:
     #     pickle.dump(evaluate_function_list, f)
@@ -36,6 +82,58 @@ def calculate_score(score_list: list, visit_list: list, length_list: list):
     #     indices = np.random.choice(len(score_list), len(score_list)//2, replace=False)
     #     for idx in indices:
     #         score_list[idx] = min_weight
+    print_str = ''
+    while True:
+
+        score_dic = {}
+        assert len(score_list) == len(length_list)
+        for score_i, (score, length) in enumerate(zip(score_list, length_list)):
+            if score not in score_dic:
+                score_dic[score] = []
+            score_dic[score].append((score_i, length))
+
+        score_list_list = list(score_dic.items())
+        score_list_list.sort(key=lambda x: -x[0])
+        
+        if len(score_list_list) < 10:
+            segment_list = [score_indices for score, score_indices in score_list_list]
+        else:
+            first_score, first_indices = score_list_list[0]
+            remain_seg = score_list_list[1:]
+            remain_score_list = [x[0] for x in remain_seg]
+            assert len(remain_score_list) >= 9, 'len(remain_score_list) >= 9'
+            kmeans = KMeans(n_clusters=9, random_state=0).fit(np.array(remain_score_list).reshape(-1, 1))
+            assert len(remain_score_list) == len(kmeans.labels_), 'len(remain_score_list) == len(kmeans.labels_)'
+            remain_score_dic = {}
+            for (score, score_indices), clu_i in zip(remain_seg, kmeans.labels_):
+                if clu_i not in remain_score_dic:
+                    remain_score_dic[clu_i] = []
+                remain_score_dic[clu_i].extend(score_indices)
+            segment_list = [first_indices] + list(remain_score_dic.values())
+        print_segment_list = segment_list[:3]
+        for seg in print_segment_list:
+            print_str += f'{score_list[seg[0][0]]}, {len(seg)}, {score_list[seg[-1][0]]}\n'
+        seg_indices = np.random.choice(len(segment_list), size=size, p=get_probs(len(segment_list)), replace=replace)
+        
+        indices = []
+        for seg_idx in seg_indices:
+            idx_len_list = segment_list[seg_idx]
+            clu_indices = [x[0] for x in idx_len_list]
+            # lengths = [x[1] for x in idx_len_list]
+
+            # normalized_lengths = (np.array(lengths) - min(lengths)) / (max(lengths) - min(lengths) + 1e-6)
+            # probabilities = sample_iterator.softmax(-normalized_lengths, temperature=1.0)
+            idx = np.random.choice(clu_indices)
+            indices.append(idx)
+        
+        # indices = [np.random.choice(segment_list[seg_idx], size=1)[0] for seg_idx in seg_indices]
+        if len(indices) == 2 and indices[0] == indices[1]:
+            print_str += f'same indices {score_list[indices[0]]} {score_list[indices[1]]}\n'
+        else:
+            for idx in indices:
+                print_str += f'{score_list[idx]}\n'
+            break
+    return indices, print_str
 
     s_min = min(score_list)
     s_max = max(score_list)
@@ -44,9 +142,9 @@ def calculate_score(score_list: list, visit_list: list, length_list: list):
     if s_max == s_min:
         transformed_initials = np.ones_like(score_list)
     else:
-        indices = np.random.choice(len(score_list), math.floor(mask_ratio * len(score_list)), replace=False)
-        for idx in indices:
-            score_list[idx] = s_min
+        # indices = np.random.choice(len(score_list), math.floor(mask_ratio * len(score_list)), replace=False)
+        # for idx in indices:
+        #     score_list[idx] = s_min
         s_max = max(score_list)
         # dump.append(score_list)
         if s_max == s_min:
@@ -59,7 +157,7 @@ def calculate_score(score_list: list, visit_list: list, length_list: list):
     C_l1: 超参数C_l1,f(l)的系数部分,初始为0.1
     C_l2: 超参数C_l2,f(l)的指数部分,初始为3
     '''
-    c_v1 = 0.1
+    c_v1 = evaluate_function_c_v1
     c_v2 = 3
     c_l1 = evaluate_function_c_l1
     c_l2 = 3

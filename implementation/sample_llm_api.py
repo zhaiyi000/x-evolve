@@ -4,8 +4,10 @@ from implementation import sample_iterator
 import math
 from config import sample_llm_api_min_score, config_type
 byte_key = "Bearer f184bcd9-68b0-49be-8a3f-ea095ee71e14"
+ali_key = "Bearer sk-36bd11088bdb48599fe5bf6ac1b379b4"
 open_key = "Bearer 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"
 byte_http = 'https://ark.cn-beijing.volces.com/api/v3/chat/completions'
+ali_http = 'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions'
 open_http = 'https://openrouter.ai/api/v1/chat/completions'
 rate = 7.2739
 '''
@@ -29,106 +31,41 @@ class LLM:
     output_price: float
 
 llm_list = [
-    LLM(
-        llm_name="DeepSeek-R1",
-        api_key=byte_key,
-        model="ep-20250303202036-j6hfh",
-        provider=None,
-        request_http = byte_http,
-        input_price=4.0,
-        output_price=16.0,
-    ),
-    LLM(
-        llm_name="DeepSeek-V3", 
-        api_key=byte_key, 
-        model="ep-20250331155118-wgw4n", 
-        provider=None, 
-        request_http = byte_http,
-        input_price=2.0,
-        output_price=8.0, 
-    ),
-    LLM(
-        llm_name="Deepseek-R1-distill-qwen-7b",
-        api_key=byte_key,
-        model="ep-20250305162451-qxgns",
-        provider=None,
-        request_http = byte_http,
-        input_price=0.6,
-        output_price=2.4,
-    ),
-    LLM(
-        llm_name="DeepSeek-R1-distill-qwen-32b",
-        api_key=byte_key,
-        model="ep-20250305162537-2sbpv",
-        provider=None,
-        request_http = byte_http,
-        input_price=1.5,
-        output_price=6.0,
-    ),
     # LLM(
-    #     llm_name="GPT-4o",
+    #     llm_name="DeepSeek-V3", 
+    #     api_key=byte_key, 
+    #     model="ep-20250331155118-wgw4n", 
+    #     provider=None, 
+    #     request_http = byte_http,
+    #     input_price=2.0,
+    #     output_price=8.0, 
+    # ),
+    # LLM(
+    #     llm_name="Deepseek-R1-distill-qwen-7b",
+    #     api_key=byte_key,
+    #     model="ep-20250305162451-qxgns",
+    #     provider=None,
+    #     request_http = byte_http,
+    #     input_price=0.6,
+    #     output_price=2.4,
+    # ),
+    # LLM(
+    #     llm_name="DeepSeek-R1-distill-qwen-32b",
+    #     api_key=byte_key,
+    #     model="ep-20250305162537-2sbpv",
+    #     provider=None,
+    #     request_http = byte_http,
+    #     input_price=1.5,
+    #     output_price=6.0,
+    # ),
+    # LLM(
+    #     llm_name="GPT-4o-mini",
     #     api_key=open_key,
-    #     model="openai/gpt-4o-2024-11-20",
+    #     model="openai/gpt-4o-mini",
     #     provider="OpenAI",
     #     request_http = open_http,
-    #     input_price=2.5 * rate,
-    #     output_price=10 * rate,
-    # ),
-    LLM(
-        llm_name="GPT-4o-mini",
-        api_key=open_key,
-        model="openai/gpt-4o-mini",
-        provider="OpenAI",
-        request_http = open_http,
-        input_price=0.15 * rate,
-        output_price=0.6 * rate,
-    ),
-    # LLM(
-    #     llm_name="GPT-o1-mini",
-    #     api_key=open_key,
-    #     model="openai/o1-mini",
-    #     provider="OpenAI",
-    #     request_http = open_http,
-    #     input_price=1.1 * rate,
-    #     output_price=4.4 * rate,
-    # ),
-    # not find core code
-    # LLM(
-    #     llm_name="GPT-o3-mini",
-    #     api_key=open_key,
-    #     model="openai/o3-mini",
-    #     provider="OpenAI",
-    #     request_http = open_http,
-    #     input_price=1.1 * rate,
-    #     output_price=4.4 * rate,
-    # ),
-    # not find core code
-    # LLM(
-    #     llm_name="GPT-o3-mini-high",
-    #     api_key=open_key,
-    #     model="openai/o3-mini-high",
-    #     provider="OpenAI",
-    #     request_http = open_http,
-    #     input_price=1.1 * rate,
-    #     output_price=4.4 * rate,
-    # ),
-    # LLM(
-    #     llm_name="Claude-3.7-sonnet",
-    #     api_key=open_key,
-    #     model="anthropic/claude-3.7-sonnet",
-    #     provider="Anthropic",
-    #     request_http = open_http,
-    #     input_price=3 * rate,
-    #     output_price=15 * rate,
-    # ),
-    # LLM(
-    #     llm_name="Claude-3.7-Sonnet-thinking",
-    #     api_key=open_key,
-    #     model="anthropic/claude-3.7-sonnet:thinking",
-    #     provider="Google",
-    #     request_http = open_http,
-    #     input_price=3 * rate,
-    #     output_price=15 * rate,
+    #     input_price=0.15 * rate,
+    #     output_price=0.6 * rate,
     # ),
     LLM(
         llm_name="Gemini-2.0-flash-001",
@@ -139,43 +76,96 @@ llm_list = [
         input_price=0.1 * rate,
         output_price=0.4 * rate,
     ),
-    # LLM(
-    #     llm_name="Gemini-2.0-pro-exp-02-05",
-    #     api_key=open_key,
-    #     model="google/gemini-2.0-pro-exp-02-05:free",
-    #     provider="Google AI Studio",
-    #     request_http = open_http,
-    #     input_price=0.0 * rate,
-    #     output_price=0.0 * rate,
-    # ),
-    # LLM(
-    #     llm_name="Gemini-2.0-flash-thinking-exp",
-    #     api_key=open_key,
-    #     model="google/gemini-2.0-flash-thinking-exp:free",
-    #     provider="Google AI Studio",
-    #     request_http = open_http,
-    #     input_price=0.0 * rate,
-    #     output_price=0.0 * rate,
-    # ),
-    # LLM(
-    #     llm_name="Grok-beta",
-    #     api_key=open_key,
-    #     model="x-ai/grok-beta",
-    #     provider="xAI",
-    #     request_http = open_http,
-    #     input_price=5 * rate,
-    #     output_price=15 * rate,
-    # ),
-
+    LLM(
+        llm_name="Mistral-Codestral-2501",
+        api_key=open_key,
+        model="mistralai/codestral-2501",
+        provider="Mistral",
+        request_http = open_http,
+        input_price=0.3 * rate,
+        output_price=0.9 * rate,
+    ),
     LLM(
         llm_name="Qwen2.5-72B-Instruct",
         api_key=open_key,
         model="qwen/qwen-2.5-72b-instruct",
-        provider="Nebius",
+        provider="DeepInfra",
         request_http = open_http,
         input_price=0.13 * rate,
         output_price=0.4 * rate,
     ),
+    # LLM(
+    #     llm_name="DeepSeek-R1-Distill-Llama-70B",
+    #     api_key=open_key,
+    #     model="deepseek/deepseek-r1-distill-llama-70b",
+    #     provider="DeepInfra",
+    #     request_http = open_http,
+    #     input_price=0.23 * rate,
+    #     output_price=0.69 * rate,
+    # ),
+    # LLM(
+    #     llm_name="Meta-Llama-3.1-70B-Instruct",
+    #     api_key=open_key,
+    #     model="meta-llama/llama-3.1-70b-instruct",
+    #     provider="DeepInfra",
+    #     request_http = open_http,
+    #     input_price=0.12 * rate,
+    #     output_price=0.3 * rate,
+    # ),
+    # LLM(
+    #     llm_name="Meta-Llama-3.3-70B-Instruct",
+    #     api_key=open_key,
+    #     model="meta-llama/llama-3.3-70b-instruct",
+    #     provider="DeepInfra",
+    #     request_http = open_http,
+    #     input_price=0.12 * rate,
+    #     output_price=0.3 * rate,
+    # ),
+    LLM(
+        llm_name="ali-qwen-max",
+        api_key=ali_key,
+        model="qwen-max",
+        provider=None,
+        request_http = ali_http,
+        input_price=2.4,
+        output_price=9.6,
+    ),
+    # LLM(
+    #     llm_name="ali-qwen-plus",
+    #     api_key=ali_key,
+    #     model="qwen-plus",
+    #     provider=None,
+    #     request_http = ali_http,
+    #     input_price=0.8,
+    #     output_price=2,
+    # ),
+    # LLM(
+    #     llm_name="ali-qwen-coder-plus",
+    #     api_key=ali_key,
+    #     model="qwen-coder-plus",
+    #     provider=None,
+    #     request_http = ali_http,
+    #     input_price=3.5,
+    #     output_price=7,
+    # ),
+    # LLM(
+    #     llm_name="ali-qwen-coder-turbo",
+    #     api_key=ali_key,
+    #     model="qwen-coder-turbo",
+    #     provider=None,
+    #     request_http = ali_http,
+    #     input_price=2,
+    #     output_price=6,
+    # ),
+    # LLM(
+    #     llm_name="ali-qwen2.5-coder-32b-instruct",
+    #     api_key=ali_key,
+    #     model="qwen2.5-coder-32b-instruct",
+    #     provider=None,
+    #     request_http = ali_http,
+    #     input_price=2,
+    #     output_price=6,
+    # ),
 ]
 '''
 llm_list: 存储所有的大模型的list[LLM]
@@ -211,6 +201,7 @@ class EvaluateLLM:
 
     # 计算下次选择大模型时使用的评分概率
     def calculate_probability(self) -> LLM:
+        return get_random_model()
         window_size = 5  # window_size是否过大了，对历史的观察太多 todo
         c_1 = 100
         temperature = 1
@@ -243,6 +234,8 @@ class EvaluateLLM:
                     intensity = math.exp(c_1 * (score - 1))
                 elif config_type == 'cap_set':
                     intensity = 1 - math.exp(c_1 * -score)
+                elif config_type == 'admissible_set':
+                    raise Exception('wrong type')
                 else:
                     raise Exception('wrong type')
                 return intensity
@@ -305,6 +298,20 @@ def get_gemini_20() -> LLM:
     return get_llm("Gemini-2.0-flash-001")
 
 
+def get_mistral() -> LLM:
+    return get_llm("Mistral-Codestral-2501")
+
+    
+
+
+def get_qwen_72b() -> LLM:
+    return get_llm("Qwen2.5-72B-Instruct")
+
+
+def get_llama_70b() -> LLM:
+    return get_llm("DeepSeek-R1-Distill-Llama-70B")
+
+
 def get_random_model() -> LLM:
     return llm_list[np.random.choice(len(llm_list), size=1)[0]]
 
@@ -318,4 +325,115 @@ def get_random_gemini20_deepseekv3_qwen32b() -> LLM:
     local_llm_list = [get_gemini_20(), get_deepseek_v3(), get_qwen_32b()]
     return local_llm_list[np.random.choice(len(local_llm_list), size=1)[0]]
 
+def get_random_gemini20_qwen72b_qwen32b() -> LLM:
+    local_llm_list = [get_gemini_20(), get_qwen_72b(), get_qwen_32b()]
+    return local_llm_list[np.random.choice(len(local_llm_list), size=1)[0]]
     
+
+def get_random_gemini20_qwen72b_qwen32b_llama70b() -> LLM:
+    local_llm_list = [get_gemini_20(), get_qwen_72b(), get_qwen_32b(), get_llama_70b()]
+    return local_llm_list[np.random.choice(len(local_llm_list), size=1)[0]]
+
+    
+    # LLM(
+    #     llm_name="DeepSeek-R1",
+    #     api_key=byte_key,
+    #     model="ep-20250303202036-j6hfh",
+    #     provider=None,
+    #     request_http = byte_http,
+    #     input_price=4.0,
+    #     output_price=16.0,
+    # ),
+
+    # LLM(
+    #     llm_name="GPT-4o",
+    #     api_key=open_key,
+    #     model="openai/gpt-4o-2024-11-20",
+    #     provider="OpenAI",
+    #     request_http = open_http,
+    #     input_price=2.5 * rate,
+    #     output_price=10 * rate,
+    # ),
+
+    # LLM(
+    #     llm_name="GPT-o1-mini",
+    #     api_key=open_key,
+    #     model="openai/o1-mini",
+    #     provider="OpenAI",
+    #     request_http = open_http,
+    #     input_price=1.1 * rate,
+    #     output_price=4.4 * rate,
+    # ),
+    # LLM(
+    #     llm_name="GPT-o3-mini",
+    #     api_key=open_key,
+    #     model="openai/o3-mini",
+    #     provider="OpenAI",
+    #     request_http = open_http,
+    #     input_price=1.1 * rate,
+    #     output_price=4.4 * rate,
+    # ),
+    # LLM(
+    #     llm_name="GPT-o3-mini-high",
+    #     api_key=open_key,
+    #     model="openai/o3-mini-high",
+    #     provider="OpenAI",
+    #     request_http = open_http,
+    #     input_price=1.1 * rate,
+    #     output_price=4.4 * rate,
+    # ),
+    # LLM(
+    #     llm_name="Claude-3.7-sonnet",
+    #     api_key=open_key,
+    #     model="anthropic/claude-3.7-sonnet",
+    #     provider="Anthropic",
+    #     request_http = open_http,
+    #     input_price=3 * rate,
+    #     output_price=15 * rate,
+    # ),
+    # LLM(
+    #     llm_name="Claude-3.7-Sonnet-thinking",
+    #     api_key=open_key,
+    #     model="anthropic/claude-3.7-sonnet:thinking",
+    #     provider="Google",
+    #     request_http = open_http,
+    #     input_price=3 * rate,
+    #     output_price=15 * rate,
+    # ),
+
+    # LLM(
+    #     llm_name="Grok-beta",
+    #     api_key=open_key,
+    #     model="x-ai/grok-beta",
+    #     provider="xAI",
+    #     request_http = open_http,
+    #     input_price=5 * rate,
+    #     output_price=15 * rate,
+    # ),
+
+
+
+
+
+
+
+
+
+    # LLM(
+    #     llm_name="Gemini-2.0-pro-exp-02-05",
+    #     api_key=open_key,
+    #     model="google/gemini-2.0-pro-exp-02-05:free",
+    #     provider="Google AI Studio",
+    #     request_http = open_http,
+    #     input_price=0.0 * rate,
+    #     output_price=0.0 * rate,
+    # ),
+    # LLM(
+    #     llm_name="Gemini-2.0-flash-thinking-exp",
+    #     api_key=open_key,
+    #     model="google/gemini-2.0-flash-thinking-exp:free",
+    #     provider="Google AI Studio",
+    #     request_http = open_http,
+    #     input_price=0.0 * rate,
+    #     output_price=0.0 * rate,
+    # ),
