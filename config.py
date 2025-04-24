@@ -298,27 +298,27 @@ def priority(el: tuple[int, ...]) -> float:
 elif config_type == 'cycle_graphs':
 
     additional_prompt = \
-"""
-I'm working on the maximum independent set problem in the 5-th strong product of a 7-node cycle graph, using a greedy algorithm guided by a priority function to determine vector selection order. Each vertex in this graph is a 5-dimensional vector with values in {0, 1, ..., 6}. Two vertices are adjacent if they differ by at most 1 (mod 7) in each coordinate and are not identical. An independent set is a subset of vectors where no two are adjacent.
+"""I'm working on the maximum independent set problem in the 5-th strong product of a 7-node cycle graph, using a greedy algorithm guided by a priority function to determine vector selection order.
+
 
 ## What I Need
-1. **BOLD EVOLUTION OF PRIORITY FUNCTION**: Please create a novel priority function variant that might outperform my reference implementations. Don't be constrained by my current approaches - take risks and suggest radically different strategies that might lead to breakthroughs.
-2. **MARK ALL TUNABLE PARAMETERS**: For every single element that could potentially be tuned (no matter how minor), mark it with tunable([option1, option2, ...]) wrapper. 
+1. **BOLD EVOLUTION OF PRIORITY FUNCTION**: Please create an improved `priority_v2` function that might outperform my reference implementations. Don't be constrained by my current approaches - take risks and suggest radically different strategies that might lead to breakthroughs.
+2. **MARK ALL TUNABLE PARAMETERS**: For every element in the `priority_v2` function that could potentially be tuned, wrap it with tunable([option1, option2, ...]).
   Format examples:
-    - `if x == tunable([num_1, num_2, num_3])`
-    - `y = tunable([np.exp(x), np.log(x)))`
+    - `if x == tunable([x1, x2, x3]):`
+    - `z = tunable([x + y, x * (y + 1))`
+
 
 ## Task Description
-Please help me develop a smarter `priority_v2` function by analyzing my reference implementations.
-1. Keep the exact function signature: `def priority_v2(el: tuple[int, ...], num_nodes: int, n: int) -> float:`.
-2. Output only Python code, without imports, helper functions, or comments. Keep it as short and simple as possible.
-3. Use a basic heuristic approach; avoid complex statistical methods.
+Please help me develop an improved `priority_v2` function by analyzing my reference implementations.
+Output Python code only, without any comments. Keep the implementation as **short** as possible.
+
 
 ## Current Priority Functions
 Below are two reference priority functions I've developed.
 """
 
-    specification = r'''
+    specification = '''
 import itertools
 import numpy as np
 import pickle
@@ -343,7 +343,7 @@ def solve(num_nodes: int, n: int) -> list[tuple[int, ...]]:
     with open('cycle_graphs7_5.pkl', 'rb') as f:
         to_block, powers, children = pickle.load(f)
     scores = np.array([priority(tuple(child), num_nodes, n)
-                        for child in children])
+                        for child in children], dtype=np.float32)
 
     # Build `max_set` greedily, using scores for prioritization.
     max_set = np.empty(shape=(0, n), dtype=np.int32)
