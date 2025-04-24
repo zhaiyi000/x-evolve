@@ -30,7 +30,7 @@ def tokenizer_encode_inner(vocab, pad_token_id, ans_token_id, sep_token_id, func
         for function in function_list:
             if len(function) == 1:
                 function = function[0]
-                decision = None
+                decision = []
             elif len(function) == 2:
                 function, decision = function
             else:
@@ -47,7 +47,7 @@ def tokenizer_encode_inner(vocab, pad_token_id, ans_token_id, sep_token_id, func
 
             ids = [vocab[word] for word in words]
             ids.append(ans_token_id)
-            labels = None
+            labels = []
             if decision:
                 labels = [vocab[word] for word in decision]
                 # labels.append(sep_token_id)
@@ -217,7 +217,9 @@ class Tokenizer():
 def test_model_max_length(function_list, tokenizer_path):
     tokenizer = Tokenizer.from_pretrained(tokenizer_path)
     tokens_list = tokenizer(function_list)
-    model_max_length = max(len(tokens[0])+len(tokens[1]) for tokens in tokens_list)
+    model_max_length = 0
+    for tokens in tokens_list:
+        model_max_length = max(len(tokens[0])+len(tokens[1]) ,model_max_length)
     print("model_max_length:", model_max_length)
     model_max_length = ((model_max_length - 1) // 32 + 1) * 32
     tokenizer.save_pretrained(tokenizer_path, model_max_length=model_max_length)
@@ -225,7 +227,7 @@ def test_model_max_length(function_list, tokenizer_path):
 
 
 def make_dataset(function_list, score_list, tokenizer_path):
-    dataset_path = 'dataset'
+    dataset_path = 'dataset_512_short_1'
     c_1 = 100
 
     tokenizer = Tokenizer.from_pretrained(tokenizer_path)
@@ -252,9 +254,11 @@ def make_dataset(function_list, score_list, tokenizer_path):
 
 def main():
     files = []
-    files.extend(glob.glob('../zy1/funsearch_llm_api/samples/*.json'))
-    files.extend(glob.glob('../zy2/funsearch_llm_api/samples/*.json'))
+    files.extend(glob.glob('/root/funsearch/log_loop1_model3_21/funsearch_llm_api/samples/*.json'))
     files = natsort.natsorted(files)
+    
+    num_choose = 100000
+    files = np.random.choice(files,size = num_choose,replace= False)
 
     function_set = set()
     decision_set = set()
@@ -269,7 +273,10 @@ def main():
         function = info['function']
         score = info['score']
         decisions = info['decisions']
-
+        
+        function = [] if function is None else function
+        decisions = [] if decisions is None else decisions
+        
         function_total_set.add(function)
         if score:
             matches = list(re.finditer(sample_iterator.SAMPLE_REGULAR, function))
@@ -305,7 +312,7 @@ def main():
     vocab_list = SPECIAL_TOKENS + vocab_list
     print(len(vocab_list))
 
-    tokenizer_path = 'tokenizer'
+    tokenizer_path = 'tokenizer_512_short_1'
     tokenizer = Tokenizer()
     tokenizer.save_pretrained(tokenizer_path, vocab_list=vocab_list)
 

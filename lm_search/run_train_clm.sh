@@ -1,10 +1,10 @@
 export PYTHONUNBUFFERED=1
-CUDA_VISIBLE_DEVICES=2,1,0 torchrun --master-port=9088 --nproc_per_node=3 train_clm.py \
+CUDA_VISIBLE_DEVICES=3,2,1,0 torchrun --master-port=9088 --nproc_per_node=4 train_clm.py \
                                     --trainer_class=trainer \
                                     --do_train \
                                     --model_type=gpt2 \
-                                    --tokenizer_name=tokenizer \
-                                    --output_dir=output_middle \
+                                    --tokenizer_name=tokenizer_496 \
+                                    --output_dir=output_test \
                                     --dataset_name=dataset \
                                     --per_device_train_batch_size=32 \
                                     \
@@ -18,7 +18,7 @@ CUDA_VISIBLE_DEVICES=2,1,0 torchrun --master-port=9088 --nproc_per_node=3 train_
                                     \
                                     --fp16 \
                                     \
-                                    | tee output_middle/test.log
+                                    | tee output_test/test.log
                                     # --model_name_or_path=clm_gen_v100/checkpoint-56000
                                     # --resume_from_checkpoint=clm_gen/checkpoint-52000
 

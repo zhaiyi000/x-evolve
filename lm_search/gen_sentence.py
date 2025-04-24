@@ -9,7 +9,7 @@ import torch
 import torch.nn.functional as F
 from transformers import GPT2LMHeadModel
 from funsearch_bin_packing_llm_api import Sandbox, specification
-import bin_packing_utils
+from implementation import bin_packing_utils
 from typing import Dict
 from implementation import code_manipulation
 from implementation import sample_iterator
@@ -18,10 +18,13 @@ from implementation import evaluator
 import math
 import copy
 
-
+tokenizer_path = f'tokenizer_512_short_1'
+model_path = f'output_512_short_1/checkpoint-100000'
+inputs = {'12_7': {'n': 12, 'w': 7}}
+test_input = '12_7'
 
 def get_model():
-    tokenizer = Tokenizer.from_pretrained('tokenizer')
+    tokenizer = Tokenizer.from_pretrained(tokenizer_path)
     device = 1
 
     # gen_kwargs = {
@@ -36,7 +39,7 @@ def get_model():
     #     # "temperature": 0,
     # }
 
-    model: GPT2LMHeadModel = AutoModelForCausalLM.from_pretrained('output2/checkpoint-2000')
+    model: GPT2LMHeadModel = AutoModelForCausalLM.from_pretrained(model_path)
     model.to(device)
     return tokenizer, model, device
 
@@ -44,8 +47,7 @@ def get_model():
 
 def get_data():
     files = []
-    files.extend(glob.glob('../zy1/funsearch_llm_api/samples/*.json'))
-    files.extend(glob.glob('../zy2/funsearch_llm_api/samples/*.json'))
+    files.extend(glob.glob('/root/funsearch/log_loop1_model3_21/funsearch_llm_api/samples/*.json'))
     files = natsort.natsorted(files)
 
     score_list = []
@@ -82,7 +84,8 @@ def get_data():
 
 
 def pad_tensor(tensors, pad_value, device):
-    max_len = 1920
+    tokenizer = Tokenizer.from_pretrained(tokenizer_path)
+    max_len = tokenizer.model_max_length
     tensors = [F.pad(seq, (0, max_len - len(seq)), value=pad_value) for seq in tensors]
     tensors = torch.stack(tensors)
     tensors = tensors.to(device)
@@ -93,13 +96,14 @@ exector = Sandbox()
 template = code_manipulation.text_to_program(specification)
 function_to_evolve = 'priority'
 function_to_run = 'evaluate'
-bin_packing_or3 = {'OR3': bin_packing_utils.datasets['OR3']}
 def evaluate(code_list):
     program_list = []
     for generated_code in code_list:
         new_function, program = evaluator._sample_to_program(generated_code, template, function_to_evolve)
+        with open('program.txt', 'a') as f:
+            f.write(program + '\n')
         program_list.append(program)
-    result_list = exector.run(program_list, function_to_run=function_to_run, function_to_evolve=function_to_evolve, inputs=bin_packing_or3, test_input='OR3', timeout_seconds=30)
+    result_list = exector.run(program_list, function_to_run=function_to_run, function_to_evolve=function_to_evolve, inputs=inputs, test_input=test_input, timeout_seconds=30)
     return result_list
 
 
@@ -134,7 +138,8 @@ def main():
     while True:
         # prob = evaluate_function.calculate_score(score_list, visit_list, length_list)
         # indices = np.random.choice(len(function_list), size=64, replace=True, p=prob)
-        indices = evaluate_function.calculate_score(score_list, size=64, replace=True)
+        indices, _ = evaluate_function.calculate_score(score_list, length_list, size=64, replace=True)
+        # score_list: list, length_list: list, size: int, replace: bool
         prompts = [function_list[idx] for idx in indices]
         features = tokenizer(prompts)
 
@@ -147,7 +152,7 @@ def main():
             input_ids = torch.tensor(input_ids, dtype=torch.long)
             labels = torch.tensor(labels, dtype=torch.long)
             labels_ids = labels.clone()
-
+            
             num_elements = len(labels_ids)
             replace_num = math.ceil(num_elements * 0.15)
 
@@ -192,7 +197,10 @@ def main():
         print()
 
         result_list = evaluate(code_list)
-        this_score_list = [x[0] for x in result_list if x[1]]
+        if result_list[1] ==  False:
+            this_score_list = [x[0] for x in result_list[0] if x[1]]
+        else:
+            raise TimeoutError('timeout')
         print('this max score:', max(this_score_list), 'global score:', max_score)
         if max(this_score_list) > max_score:
             max_score = max(this_score_list)
