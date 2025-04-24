@@ -144,7 +144,7 @@ class SampleIterator:
         else:
             self.no_update_cnt += 1
 
-        print_str = f'this best socre: {best_score}; best score: {self.best_score}; global score: {self.__class__.max_score_global}; space size: {self.space_size}; measure cnt: {len(self.visited)}\n'
+        print_str = f'this best score: {best_score}; best score: {self.best_score}; global score: {self.__class__.max_score_global}; space size: {self.space_size}; measure cnt: {len(self.visited)}\n'
         factor = 4 if self.best_score == self.__class__.max_score_global else 1
         if self.space_size == len(self.visited) or self.no_update_cnt == sample_iterator_no_update_cnt * 1:
             return False, print_str

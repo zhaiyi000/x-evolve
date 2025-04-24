@@ -2,7 +2,7 @@ import os
 
 
 config_type = os.environ.get('CONFIG_TYPE', None)
-if config_type not in ['bin_packing', 'cap_set', 'admissible_set', 'symmetry_admissible_set']:
+if config_type not in ['bin_packing', 'cap_set', 'admissible_set', 'symmetry_admissible_set', 'cycle_graphs', 'corners']:
     raise Exception('wrong type')
 
 
@@ -10,7 +10,7 @@ n_dim = None
 w_dim = None
 n_w_dim = None
 
-if config_type == 'cap_set':
+if config_type == 'cap_set' or config_type == 'corners':
     n_dim = os.environ.get('N_DIM', None)
     assert n_dim != None
     n_dim = int(n_dim)
@@ -102,6 +102,34 @@ elif config_type == 'symmetry_admissible_set':
         sample_iterator_temperature = 100000
     else:
         raise Exception('wrong n w dim')
+
+elif config_type == 'cycle_graphs':
+    # evaluate_function_c_v1 = 0.1
+    # evaluate_function_c_l1 = 0.1
+    # evaluate_function_c_1 = 10
+    # evaluate_function_temperature = 1
+    # evaluate_function_mask_half = True
+
+    sample_iterator_temperature = 100
+    sample_iterator_no_update_cnt = 3
+
+    sample_llm_api_min_score = 243
+
+    measure_timeout = 30
+
+elif config_type == 'corners':
+    # evaluate_function_c_v1 = 0.1
+    # evaluate_function_c_l1 = 0.1
+    # evaluate_function_c_1 = 10
+    # evaluate_function_temperature = 1
+    # evaluate_function_mask_half = True
+
+    sample_iterator_temperature = 100
+    sample_iterator_no_update_cnt = 3
+
+    sample_llm_api_min_score = 0
+
+    measure_timeout = 15
 
 else:
     raise Exception('wrong type')
@@ -267,6 +295,87 @@ def priority(el: tuple[int, ...]) -> float:
     return 0.0
 '''
 
+elif config_type == 'cycle_graphs':
+
+    additional_prompt = \
+"""
+I'm working on the maximum independent set problem in the 5-th strong product of a 7-node cycle graph, using a greedy algorithm guided by a priority function to determine vector selection order. Each vertex in this graph is a 5-dimensional vector with values in {0, 1, ..., 6}. Two vertices are adjacent if they differ by at most 1 (mod 7) in each coordinate and are not identical. An independent set is a subset of vectors where no two are adjacent.
+
+## What I Need
+1. **BOLD EVOLUTION OF PRIORITY FUNCTION**: Please create a novel priority function variant that might outperform my reference implementations. Don't be constrained by my current approaches - take risks and suggest radically different strategies that might lead to breakthroughs.
+2. **MARK ALL TUNABLE PARAMETERS**: For every single element that could potentially be tuned (no matter how minor), mark it with tunable([option1, option2, ...]) wrapper. 
+  Format examples:
+    - `if x == tunable([num_1, num_2, num_3])`
+    - `y = tunable([np.exp(x), np.log(x)))`
+
+## Task Description
+Please help me develop a smarter `priority_v2` function by analyzing my reference implementations.
+1. Keep the exact function signature: `def priority_v2(el: tuple[int, ...], num_nodes: int, n: int) -> float:`.
+2. Output only Python code, without imports, helper functions, or comments. Keep it as short and simple as possible.
+3. Use a basic heuristic approach; avoid complex statistical methods.
+
+## Current Priority Functions
+Below are two reference priority functions I've developed.
+"""
+
+    specification = r'''
+import itertools
+import numpy as np
+import pickle
+
+@funsearch.run
+def evaluate(params: dict) -> int:
+    """Returns the size of an independent set."""
+    independent_set = solve(params['num_nodes'], params['n'])
+    return len(independent_set)
+
+
+def solve(num_nodes: int, n: int) -> list[tuple[int, ...]]:
+    """Gets independent set with maximal size.
+
+    Args:
+        num_nodes: The number of nodes of the base cyclic graph.
+        n: The power we raise the graph to.
+
+    Returns:
+        A list of `n`-tuples in `{0, 1, 2, ..., num_nodes - 1}`.
+    """
+    with open('cycle_graphs7_5.pkl', 'rb') as f:
+        to_block, powers, children = pickle.load(f)
+    scores = np.array([priority(tuple(child), num_nodes, n)
+                        for child in children])
+
+    # Build `max_set` greedily, using scores for prioritization.
+    max_set = np.empty(shape=(0, n), dtype=np.int32)
+    while np.any(scores != -np.inf):
+        # Add a child with a maximum score to `max_set`, and set scores of
+        # invalidated children to -inf, so that they never get selected.
+        max_index = np.argmax(scores)
+        child = children[None, max_index]  # [1, n]
+
+        blocking = np.einsum(
+            'cn,n->c', (to_block + child) % num_nodes, powers)  # [C]
+        scores[blocking] = -np.inf
+        max_set = np.concatenate([max_set, child], axis=0)
+
+    return [tuple(map(int, el)) for el in max_set]
+
+
+@funsearch.evolve
+def priority(el: tuple[int, ...], num_nodes: int, n: int) -> float:
+    """Returns the priority with which we want to add `el` to the set.
+
+    Args:
+        el: an n-tuple representing the element to consider whether to add.
+        num_nodes: the number of nodes of the base graph.
+        n: an integer, power of the graph.
+
+    Returns:
+        A number reflecting the priority with which we want to add `el` to the
+        independent set.
+    """
+    return 0.
+'''
 
 elif config_type == 'admissible_set':
     
@@ -441,3 +550,35 @@ def priority(el: tuple[int, ...]) -> float:
     w = {w_dim}
     return 0
 '''
+
+
+elif config_type == 'corners':
+
+    additional_prompt = \
+f'''I'm working on the {n_dim}-dimensional corners problem using a greedy algorithm with a priority function to determine vector selection order. A corner-free set is a subset of vectors in \((\mathbb{Z}_2^{n_dim} \times \mathbb{Z}_2^{n_dim})\) such that no three vectors form a corner — that is, no triple of the form \((x, y), (x+\lambda, y), (x, y+\lambda)\), with \(\lambda \ne 0\), all appear in the set (arithmetic done modulo 2).
+
+## What I Need
+1. **BOLD EVOLUTION OF PRIORITY FUNCTION**: Please create a novel `priority_v2` function that might outperform my reference implementations. Don't be constrained by my current approaches - take risks and suggest radically different strategies that might lead to breakthroughs.
+2. **MARK ALL TUNABLE PARAMETERS**: For every element in the `priority_v2` function that could potentially be tuned, wrap it with tunable([option1, option2, ...]).
+  Format examples:
+    - `if x == tunable([num_1, num_2, num_3])`
+    - `y = tunable([np.exp(x), np.log(x)))`
+
+
+## Task Description
+Please help me develop a smarter `priority_v2` function by analyzing my reference implementations.
+1. Keep the exact function signature: `def priority_v2(el: tuple[int, ...], n: int) -> float:`.
+2. Output only Python code, without imports, helper functions, or comments. Keep it as short and simple as possible.
+3. Use a basic heuristic approach; avoid complex statistical methods.
+
+
+## Current Priority Functions
+Below are two reference priority functions I've developed.
+'''
+
+
+
+    specification = f'''
+
+'''
+

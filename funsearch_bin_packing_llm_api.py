@@ -9,6 +9,7 @@ from implementation import evaluator
 from implementation import code_manipulation
 from implementation import sample_llm_api
 from bin_packing import bin_packing_utils
+from cycle_graphs import cycle_graphs_utils
 
 import json
 import multiprocessing
@@ -273,6 +274,8 @@ if __name__ == '__main__':
         inputs = {'OR3': bin_packing_utils.datasets['OR3']}
     elif config_type == 'cap_set':
         inputs = {n_dim: n_dim}
+    elif config_type == 'cycle_graphs':
+        inputs = {'7_5': cycle_graphs_utils.datasets['7_5']}
     elif config_type == 'admissible_set':
         inputs = {'12_7': {'n': 12, 'w': 7}}
     elif config_type == 'symmetry_admissible_set':

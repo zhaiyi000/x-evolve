@@ -23,6 +23,8 @@ def cal_intensity(c_1, t_init):
     elif config_type == 'cap_set':
         # return math.exp(c_1 * -t_init) - math.exp(c_1 * -1)
         return 1 - t_init
+    elif config_type == 'cycle_graphs':
+        return (1 - math.exp(c_1 * (t_init - 1))) / (1 - math.exp(c_1 * -1))
     elif config_type == 'admissible_set':
         raise Exception('wrong type')
     else:
