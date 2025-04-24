@@ -78,7 +78,7 @@ def parse_tunables_with_comments(source_code):
     class TunableCollector(cst.CSTVisitor):
         METADATA_DEPENDENCIES = (PositionProvider,)
         
-        def visit_Call(self, node):
+        def leave_Call(self, node):
             # 检查是否是tunable(...)调用
             if isinstance(node.func, cst.Name) and node.func.value == "tunable":
                 # 检查第一个参数是否是列表

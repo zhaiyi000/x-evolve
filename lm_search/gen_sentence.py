@@ -9,7 +9,7 @@ import torch
 import torch.nn.functional as F
 from transformers import GPT2LMHeadModel
 from funsearch_bin_packing_llm_api import Sandbox, specification
-from implementation import bin_packing_utils
+from bin_packing import bin_packing_utils
 from typing import Dict
 from implementation import code_manipulation
 from implementation import sample_iterator
@@ -100,8 +100,6 @@ def evaluate(code_list):
     program_list = []
     for generated_code in code_list:
         new_function, program = evaluator._sample_to_program(generated_code, template, function_to_evolve)
-        with open('program.txt', 'a') as f:
-            f.write(program + '\n')
         program_list.append(program)
     result_list = exector.run(program_list, function_to_run=function_to_run, function_to_evolve=function_to_evolve, inputs=inputs, test_input=test_input, timeout_seconds=30)
     return result_list
