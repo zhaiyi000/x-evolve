@@ -6,6 +6,9 @@ import numpy as np
 from config import *
 import cpp_helper
 
+import libcst as cst
+from redbaron import RedBaron
+from libcst.metadata import PositionProvider
 
 FILE_DEBUG_MODE = False
 MIN_SCORE = -1e10
@@ -286,7 +289,10 @@ class SampleIterator:
                 print('x', end='')
         _node = []
         for item in decisions:
-            _node.append(cst.parse_expression(item))
+            try:
+                _node.append(cst.parse_expression(item))
+            except Exception as e:
+                print('bad predict:', item)
         function_code = self.decisions_code(_node)
         return function_code
     

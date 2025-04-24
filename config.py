@@ -25,8 +25,8 @@ elif config_type == 'symmetry_admissible_set':
         w_dim = 17
     else:
         raise Exception('wrong type')
-else:
-    raise Exception('wrong type')
+# else:
+#     raise Exception('wrong type')
 
 
 log_dir = os.environ.get('LOG_DIR', 'logs')
