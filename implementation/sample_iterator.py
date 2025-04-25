@@ -90,7 +90,11 @@ class SampleIterator:
             if config_type == 'bin_packing':
                 self._code = 'def priority(item: float, bins: np.ndarray) -> np.ndarray:' + '\n' + code
             if config_type == 'cap_set':
-                self._code = 'def priority(el: tuple[int, ...]) -> float:' + '\n' +code
+                self._code = 'def priority(el: tuple[int, ...]) -> float:' + '\n' + code
+            if config_type == 'admissible_set':
+                self._code = 'def priority(el: tuple[int, ...]) -> float:' + '\n' + code
+            if config_type == 'symmetry_admissible_set':
+                self._code = 'def priority(el: tuple[int, ...]) -> float:' + '\n' + code
         # self._regular = SAMPLE_REGULAR
         # self._split = SPLIT_CHAR
         self._temperature = 1
@@ -350,31 +354,72 @@ class SampleIterator:
     
     def get_final_code(self):
         top_cnt = 1
-        reocrds = list(self.visited.items())
-        np.random.shuffle(reocrds)
-        reocrds.sort(key=lambda x: x[1], reverse=True)
-        reocrds = reocrds[:top_cnt]
-        indices_list = [x[0] for x in reocrds]
-        function_code = self._code
-        space_i = len(self.tunable) - 1
-        for match, space in zip(reversed(self.matches), reversed(self.tunable)):
-            idx_set = set()
-            for indices in indices_list:
-                idx_set.add(indices[space_i])
-            start, end = match.span()
-            if len(idx_set) == 0:
-                raise Exception('len idx set equal 0')
-            elif len(idx_set) == 1:
-                replace_str = space[list(idx_set)[0]]
-            else:
-                idx_list = list(idx_set)
-                idx_list.sort()
-                replace_str = 'tunable(['
-                for idx_i, idx in enumerate(idx_list):
-                    if idx_i != 0:
-                        replace_str += ', '
-                    replace_str += space[idx]
-                replace_str += '])'
-            function_code = function_code[:start] + replace_str + function_code[end:]
-            space_i -= 1
-        return function_code, self.best_score
+        records = list(self.visited.items())
+        np.random.shuffle(records)
+        records.sort(key=lambda x: x[1], reverse=True)
+        records = records[:top_cnt]
+        indices_list = [x[0] for x in records]
+        modified_module, _= self.replace_tunables_with_comments(
+            module = self._module,
+            tunables_info = self._tunables,
+            replace_indices = indices_list
+        )
+        # RedBaron 找到所有形如'# 注释'的注释
+        red = RedBaron(self._code)
+        comments=[]
+        for comment in red.find_all('comment'):
+            comments.append({
+                'text':comment.value.strip(),
+            })
+        # 找到注释所对应的行及行内标志信息
+        lines = self._code.splitlines()
+        for index,line in enumerate(lines):
+            for item in comments:
+                if item['text'] in line:
+                    item['sign'] = line.replace(item['text'],'').strip().strip(',')
+                    item['line'] = index
+        # 仅保留所需注释
+        comments_clear = []
+        for item in comments:
+            if len(item['sign']) != 0:
+                comments_clear.append(item)
+                # print(item)
+        # 注释回填
+        mm_lines = modified_module.code.splitlines()
+        final_code = []
+        for index,line in enumerate(mm_lines):
+            for item in comments_clear:
+                if is_in(item['sign'],line) and item['line'] >= index:
+                    line = line + ' ' + item['text']
+                    item['line'] = -1
+            final_code.append(line)
+        # print(comments_clear)
+                    
+        f_code = ''
+        for item in final_code[1:]:
+            f_code = f_code + item + '\n'
+        
+        return f_code, self.best_score
+        # function_code = self._code
+        # space_i = len(self.tunable) - 1
+        # for match, space in zip(reversed(self.matches), reversed(self.tunable)):
+        #     idx_set = set()
+        #     for indices in indices_list:
+        #         idx_set.add(indices[space_i])
+        #     start, end = match.span()
+        #     if len(idx_set) == 0:
+        #         raise Exception('len idx set equal 0')
+        #     elif len(idx_set) == 1:
+        #         replace_str = space[list(idx_set)[0]]
+        #     else:
+        #         idx_list = list(idx_set)
+        #         idx_list.sort()
+        #         replace_str = 'tunable(['
+        #         for idx_i, idx in enumerate(idx_list):
+        #             if idx_i != 0:
+        #                 replace_str += ', '
+        #             replace_str += space[idx]
+        #         replace_str += '])'
+        #     function_code = function_code[:start] + replace_str + function_code[end:]
+        #     space_i -= 1
+        # return function_code, self.best_score
