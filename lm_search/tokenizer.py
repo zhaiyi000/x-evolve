@@ -23,6 +23,9 @@ MASK_CHAR_RE = f'{re.escape(MASK_TOKEN)}'
 FINDALL_RE = f'{PAD_CHAR_RE}|{ANS_CHAR_RE}|{SEP_CHAR_RE}|{MASK_CHAR_RE}|{SPLIT_CHARS_RE}|[^{SPLIT_CHARS_RE[1:-1]}]+'
 SPECIAL_TOKENS = [PAD_TOKEN, ANS_TOKEN, SEP_TOKEN, MASK_TOKEN]
 
+path_dataset = 'dataset_200000'
+path_tokenizer = 'tokenizer_200000'
+samples_num = 200000
 
 def tokenizer_encode_inner(vocab, pad_token_id, ans_token_id, sep_token_id, function_list):
     try:
@@ -227,7 +230,7 @@ def test_model_max_length(function_list, tokenizer_path):
 
 
 def make_dataset(function_list, score_list, tokenizer_path):
-    dataset_path = 'dataset_512_short_1'
+    dataset_path = path_dataset
     c_1 = 100
 
     tokenizer = Tokenizer.from_pretrained(tokenizer_path)
@@ -257,7 +260,7 @@ def main():
     files.extend(glob.glob('/root/funsearch/log_loop1_model3_21/funsearch_llm_api/samples/*.json'))
     files = natsort.natsorted(files)
     
-    num_choose = 100000
+    num_choose = samples_num
     files = np.random.choice(files,size = num_choose,replace= False)
 
     function_set = set()
@@ -312,7 +315,7 @@ def main():
     vocab_list = SPECIAL_TOKENS + vocab_list
     print(len(vocab_list))
 
-    tokenizer_path = 'tokenizer_512_short_1'
+    tokenizer_path = path_tokenizer
     tokenizer = Tokenizer()
     tokenizer.save_pretrained(tokenizer_path, vocab_list=vocab_list)
 
