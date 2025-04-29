@@ -111,8 +111,8 @@ def solve(n: int, w: int) -> tuple[np.ndarray, np.ndarray]:
     # np.save('admissible_set_24_17_expand.npy', np.array(valid_children_expand))
     # exit()
     
-    valid_children = np.load('admissible_set_21_15.npy')
-    valid_children_expand = np.load('admissible_set_21_15_expand.npy')
+    valid_children = np.load('admissible_set_24_17.npy')
+    valid_children_expand = np.load('admissible_set_24_17_expand.npy')
     valid_children_expand = [tuple(xs) for xs in valid_children_expand.tolist()]
     
     valid_scores = np.array(
@@ -134,22 +134,22 @@ def evaluate(kargs) -> int:
 def tunable(ls):
     return ls[1]
 
-# @funsearch.evolve
-def priority(el: tuple[int, ...]) -> float:
-    n = 21
-    w = 15
-    total = sum(el)
-    zeros = el.count(0)
-    ones = el.count(1)
-    twos = el.count(2)
-    score = tunable([total, w - total, zeros, ones, twos])
-    score += tunable([sum(el[:10]), sum(el[10:])])
-    score += tunable([np.mean(el), np.median(el)])
-    score += tunable([np.max(el), np.min(el)])
-    return score
+# # @funsearch.evolve
+# def priority(el: tuple[int, ...]) -> float:
+#     n = 21
+#     w = 15
+#     total = sum(el)
+#     zeros = el.count(0)
+#     ones = el.count(1)
+#     twos = el.count(2)
+#     score = tunable([total, w - total, zeros, ones, twos])
+#     score += tunable([sum(el[:10]), sum(el[10:])])
+#     score += tunable([np.mean(el), np.median(el)])
+#     score += tunable([np.max(el), np.min(el)])
+#     return score
 
-print(evaluate(dict(n=21, w=15)))
-exit()
+# print(evaluate(dict(n=21, w=15)))
+# exit()
 
 
 def priority(el: tuple[int, ...]) -> float:

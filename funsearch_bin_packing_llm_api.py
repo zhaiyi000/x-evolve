@@ -98,14 +98,15 @@ def request_inner(llm_ins: sample_llm_api.LLM, headers, json_data):
 
     data = json.loads(response.text)
 
-    try:
-        data['provider']
-    except Exception as err:
-        print('no provider key')
-        print(response.text)
-        if 'Model busy, retry later' in response.text:
-            time.sleep(30)
-        raise err
+    if llm_ins.provider:
+        try:
+            data['provider']
+        except Exception as err:
+            print('no provider key')
+            print(response.text)
+            if 'Model busy, retry later' in response.text:
+                time.sleep(30)
+            raise err
 
     if llm_ins.provider and data['provider'] != llm_ins.provider:
         print(f'specific provider: {llm_ins.provider}, actual provicer: {data["provider"]}')

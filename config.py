@@ -1,3 +1,11 @@
+
+# import debugpy
+# debugpy.listen(5678)
+# print('wait_for_client...')
+# debugpy.wait_for_client()
+# debugpy.breakpoint()
+
+
 import os
 
 
@@ -28,7 +36,7 @@ elif config_type == 'symmetry_admissible_set':
 
 
 log_dir = os.environ.get('LOG_DIR', 'logs')
-sample_llm_cnt = 30
+sample_llm_cnt = 3
 update_database_cnt = 3
 island_cnt = 1
 
@@ -95,10 +103,10 @@ elif config_type == 'symmetry_admissible_set':
     sample_llm_api_min_score = 548
 
     if n_w_dim == '21_15':
-        measure_timeout = 45
+        measure_timeout = 30
         sample_iterator_temperature = 10000
     elif n_w_dim == '24_17':
-        measure_timeout = 180
+        measure_timeout = 300
         sample_iterator_temperature = 100000
     else:
         raise Exception('wrong n w dim')
@@ -111,7 +119,7 @@ elif config_type == 'cycle_graphs':
     # evaluate_function_mask_half = True
 
     sample_iterator_temperature = 100
-    sample_iterator_no_update_cnt = 3
+    sample_iterator_no_update_cnt = 1
 
     sample_llm_api_min_score = 243
 
@@ -298,7 +306,7 @@ def priority(el: tuple[int, ...]) -> float:
 elif config_type == 'cycle_graphs':
 
     additional_prompt = \
-"""I'm working on the maximum independent set problem in the 5-th strong product of a 7-node cycle graph, using a greedy algorithm guided by a priority function to determine vector selection order.
+"""I’m working on the Shannon capacity of cycle graphs problem, using a greedy algorithm guided by a priority function to determine vector selection order. The Shannon capacity problem seeks to find the maximum rate at which information can be transmitted over a noisy channel represented by a graph, with zero probability of error. Specifically, I focus on cycle graphs C_m and aim to construct large independent sets in powers of cycle graphs C_m^n to find better lower bounds for the Shannon capacity \Theta(C_m).
 
 
 ## What I Need
@@ -342,7 +350,7 @@ def solve(num_nodes: int, n: int) -> list[tuple[int, ...]]:
     """
     with open('cycle_graphs7_5.pkl', 'rb') as f:
         to_block, powers, children = pickle.load(f)
-    scores = np.array([priority(tuple(child), num_nodes, n)
+    scores = np.array([priority(tuple(child))
                         for child in children], dtype=np.float32)
 
     # Build `max_set` greedily, using scores for prioritization.
@@ -362,7 +370,7 @@ def solve(num_nodes: int, n: int) -> list[tuple[int, ...]]:
 
 
 @funsearch.evolve
-def priority(el: tuple[int, ...], num_nodes: int, n: int) -> float:
+def priority(el: tuple[int, ...]) -> float:
     """Returns the priority with which we want to add `el` to the set.
 
     Args:
@@ -374,6 +382,8 @@ def priority(el: tuple[int, ...], num_nodes: int, n: int) -> float:
         A number reflecting the priority with which we want to add `el` to the
         independent set.
     """
+    num_nodes = 7
+    n = 5
     return 0.
 '''
 
@@ -466,8 +476,7 @@ f'''I'm working on the constant-weight admissible set problem with dimension {n_
 
 ## Task Description
 Please help me develop an improved `priority_v2` function by analyzing my reference implementations.
-1. Use only rule-based heuristics; do not use **any** statistical features.
-2. Output Python code only, without any comments. Keep the implementation as **short** as possible.
+Output Python code only, without any comments. Keep the implementation as **short** as possible.
 
 
 ## Current Priority Functions
@@ -550,6 +559,8 @@ def priority(el: tuple[int, ...]) -> float:
     w = {w_dim}
     return 0
 '''
+
+    mask_skip_line_cnt = 2
 
 
 elif config_type == 'corners':

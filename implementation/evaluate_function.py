@@ -31,7 +31,7 @@ def cal_intensity(c_1, t_init):
         raise Exception('wrong type')
 
 
-def get_exp_decay_probs_fixed_first_prob(length, first_prob=0.4, tol=1e-8):
+def get_exp_decay_probs_fixed_first_prob(length, first_prob=0.5, tol=1e-8):
     assert length > 0
 
     # Binary search λ to make sum(p) = 1 where p0 = first_prob

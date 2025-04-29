@@ -216,7 +216,7 @@ class ProgramsDatabase:
 
         # Replace functions in the template with the list constructed here.
         prompt = dataclasses.replace(self._template, functions=versioned_functions, preface='')
-        return str(prompt)
+        return prompt.str_with_mask()
     
 
     def dump_node(self, node, score, island_id):

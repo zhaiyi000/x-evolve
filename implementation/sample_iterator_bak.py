@@ -97,7 +97,7 @@ class SampleIterator:
                 self._code = 'def priority(el: tuple[int, ...]) -> float:' + '\n' + code
         # self._regular = SAMPLE_REGULAR
         # self._split = SPLIT_CHAR
-        self._temperature = 1
+        self._temperature = sample_iterator_temperature
         self._tunables, self._module, self._tunables_all= parse_tunables_with_comments(self._code)
         # matches = list(re.finditer(self._regular, self._code))
         # matches_update = False
@@ -170,7 +170,7 @@ class SampleIterator:
         return module.visit(TunableReplacer()), decisions
     
     def get_instance(self, indices):
-        modified_module,decisions= self.replace_tunables_with_comments(
+        modified_module, decisions= self.replace_tunables_with_comments(
             module = self._module,
             tunables_info = self._tunables,
             replace_indices = indices

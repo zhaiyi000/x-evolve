@@ -33,6 +33,8 @@ from collections.abc import Iterator, MutableSet, Sequence
 import dataclasses
 import io
 import tokenize
+import numpy as np
+import config
 
 
 @dataclasses.dataclass
@@ -75,6 +77,25 @@ class Function:
                 value = value.replace('"""', '')
         super().__setattr__(name, value)
 
+    def str_with_mask(self):
+        lines = self.body.split('\n')
+        skip_lines = lines[:config.mask_skip_line_cnt]
+        lines = lines[config.mask_skip_line_cnt:]
+        mask_cnt = int(len(lines) * 0.)
+        indices = np.random.choice(len(lines), size=mask_cnt, replace=False)
+        for idx in indices:
+            line = lines[idx]
+            leading_spaces = len(line) - len(line.lstrip(' '))
+            new_line = ' ' * leading_spaces + '[MASK_LINE]'
+            lines[idx] = new_line
+        
+        return_type = f' -> {self.return_type}' if self.return_type else ''
+        function = f'def {self.name}({self.args}){return_type}:\n'
+        if self.docstring:
+            new_line = '\n' if self.body else ''
+            function += f'    """{self.docstring}"""{new_line}'
+        function += '\n'.join((skip_lines+lines)) + '\n\n'
+        return function
 
 @dataclasses.dataclass(frozen=True)
 class Program:
@@ -109,6 +130,11 @@ class Program:
     def get_function(self, function_name: str) -> Function:
         index = self.find_function_index(function_name)
         return self.functions[index]
+    
+    def str_with_mask(self):
+        program = f'{self.preface}\n' if self.preface else ''
+        program += '\n'.join([f.str_with_mask() for f in self.functions])
+        return program
 
 
 class ProgramVisitor(ast.NodeVisitor):
