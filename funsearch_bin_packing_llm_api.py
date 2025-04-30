@@ -289,10 +289,10 @@ if __name__ == '__main__':
     
     import shutil, os
     if os.path.exists(log_dir):
-        y_or_n = input('delete logs folder? [n]')
-        if y_or_n == 'y':
-            print('delete logs folder!')
-            shutil.rmtree(log_dir)
+        # y_or_n = input('delete logs folder? [n]')
+        # if y_or_n == 'y':
+        print('delete logs folder!')
+        shutil.rmtree(log_dir)
     
     funsearch.main(
         specification=specification,

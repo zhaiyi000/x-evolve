@@ -249,7 +249,7 @@ f'''I'm working on the {n_dim}-dimensional cap set problem using a greedy algori
 ## Task Description
 Please help me develop an improved `priority_v2` function by analyzing my reference implementations.
 Output Python code only, without any comments.
-Compute a score using loops, if-else, and arithmetic.
+Compute a score using loops and if-else.
 
 
 ## Current Priority Functions
@@ -482,7 +482,7 @@ f'''I'm working on the constant-weight admissible set problem with dimension {n_
 ## Task Description
 Please help me develop an improved `priority_v2` function by analyzing my reference implementations.
 Output Python code only, without any comments.
-Compute a score using loops, if-else, and arithmetic.
+Compute a score using loops and if-else.
 
 
 ## Current Priority Functions
