@@ -152,6 +152,7 @@ class Sampler:
         while True:
             try:
                 print('wait llm response')
+                print(f'Current queue size: {self._queue.qsize()}')
                 llm_return_obj = self._queue.get(timeout=10)
                 print('get llm response')
             except queue.Empty:

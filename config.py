@@ -24,13 +24,16 @@ if config_type == 'cap_set' or config_type == 'corners':
     n_dim = int(n_dim)
 elif config_type == 'symmetry_admissible_set':
     n_w_dim = os.environ.get('N_W_DIM', None)
-    assert n_w_dim in ['21_15', '24_17']
+    assert n_w_dim in ['21_15', '24_17', '27_19']
     if n_w_dim == '21_15':
         n_dim = 21
         w_dim = 15
     elif n_w_dim == '24_17':
         n_dim = 24
         w_dim = 17
+    elif n_w_dim == '27_19':
+        n_dim = 27
+        w_dim = 19
     else:
         raise Exception('wrong type')
 
@@ -108,6 +111,9 @@ elif config_type == 'symmetry_admissible_set':
     elif n_w_dim == '24_17':
         measure_timeout = 300
         sample_iterator_temperature = 100000
+    elif n_w_dim == '27_19':
+        measure_timeout = 1800
+        sample_iterator_temperature = 200000
     else:
         raise Exception('wrong n w dim')
 
@@ -229,22 +235,21 @@ def priority(item: float, bins: np.ndarray) -> np.ndarray:
 elif config_type == 'cap_set':
     
     additional_prompt = \
-f'''I'm working on the {n_dim}-dimensional cap set problem using a greedy algorithm with a priority function to determine vector selection order. A cap set is a collection of vectors in {{0,1,2}}^n where no three vectors form an arithmetic line (i.e., for any three distinct vectors a, b, c, if a + c = 2b, then they cannot all appear in the cap set). 
+f'''I'm working on the {n_dim}-dimensional cap set problem using a greedy algorithm with a priority function to determine vector selection order. A cap set is a collection of vectors in {{0,1,2}}^n where no three vectors form an arithmetic line (i.e., for any three distinct vectors a, b, c, if a + c = 2b, then they cannot all appear in the cap set).
 
 
 ## What I Need
-1. **BOLD EVOLUTION OF PRIORITY FUNCTION**: Please create a novel `priority_v2` function that might outperform my reference implementations. Don't be constrained by my current approaches - take risks and suggest radically different strategies that might lead to breakthroughs.
+1. **BOLD EVOLUTION OF PRIORITY FUNCTION**: Please create an improved `priority_v2` function that might outperform my reference implementations. Don't be constrained by my current approaches - take risks and suggest radically different strategies that might lead to breakthroughs.
 2. **MARK ALL TUNABLE PARAMETERS**: For every element in the `priority_v2` function that could potentially be tuned, wrap it with tunable([option1, option2, ...]).
   Format examples:
-    - `if x == tunable([num_1, num_2, num_3])`
-    - `y = tunable([np.exp(x), np.log(x)))`
+    - `if x == tunable([x1, x2, x3]):`
+    - `z = tunable([x + y, x * (y + 1)])`
 
 
 ## Task Description
-Please help me develop a smarter `priority_v2` function by analyzing my reference implementations.
-1. Keep the exact function signature: `def priority_v2(el: tuple[int, ...]) -> float:`.
-2. Output only Python code, without imports, helper functions, or comments. Keep it as short and simple as possible.
-3. Use only basic logical rules, such as position, symmetry, and element presence, while avoiding complex mathematical modeling (including statistical calculations).
+Please help me develop an improved `priority_v2` function by analyzing my reference implementations.
+Output Python code only, without any comments.
+Compute a score using loops, if-else, and arithmetic.
 
 
 ## Current Priority Functions
@@ -471,12 +476,13 @@ f'''I'm working on the constant-weight admissible set problem with dimension {n_
 2. **MARK ALL TUNABLE PARAMETERS**: For every element in the `priority_v2` function that could potentially be tuned, wrap it with tunable([option1, option2, ...]).
   Format examples:
     - `if x == tunable([x1, x2, x3]):`
-    - `z = tunable([x + y, x * (y + 1))`
+    - `z = tunable([x + y, x * (y + 1)])`
 
 
 ## Task Description
 Please help me develop an improved `priority_v2` function by analyzing my reference implementations.
-Output Python code only, without any comments. Keep the implementation as **short** as possible.
+Output Python code only, without any comments.
+Compute a score using loops, if-else, and arithmetic.
 
 
 ## Current Priority Functions

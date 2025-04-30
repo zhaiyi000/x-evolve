@@ -107,12 +107,12 @@ def solve(n: int, w: int) -> tuple[np.ndarray, np.ndarray]:
     
     # valid_children_expand = [sum([TRIPLES[x] for x in xs], ()) for xs in valid_children]    
 
-    # np.save('admissible_set_24_17.npy', np.array(valid_children))
-    # np.save('admissible_set_24_17_expand.npy', np.array(valid_children_expand))
+    # np.save('admissible_set_27_19.npy', np.array(valid_children))
+    # np.save('admissible_set_27_19_expand.npy', np.array(valid_children_expand))
     # exit()
     
-    valid_children = np.load('admissible_set_24_17.npy')
-    valid_children_expand = np.load('admissible_set_24_17_expand.npy')
+    valid_children = np.load('admissible_set_27_19.npy')
+    valid_children_expand = np.load('admissible_set_27_19_expand.npy')
     valid_children_expand = [tuple(xs) for xs in valid_children_expand.tolist()]
     
     valid_scores = np.array(
@@ -180,4 +180,4 @@ def priority(el: tuple[int, ...]) -> float:
     return result
 
 
-print(evaluate(dict(n=24, w=17)))
+print(evaluate(dict(n=27, w=19)))

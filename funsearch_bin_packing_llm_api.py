@@ -85,7 +85,9 @@ def _trim_preface_of_body(sample: str) -> str:
             if func_body_lineno < len(lines) and lines[func_body_lineno].startswith('    ') is False:
                 break
         return code
+    print('can not find core code')
     print(sample)
+    print('can not find core code')
     raise Exception('can not find core code')
 
 
