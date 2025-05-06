@@ -17,6 +17,8 @@ if config_type not in ['bin_packing', 'cap_set', 'admissible_set', 'symmetry_adm
 n_dim = None
 w_dim = None
 n_w_dim = None
+nodes_dim = None
+num_nodes = None
 
 if config_type == 'cap_set' or config_type == 'corners':
     n_dim = os.environ.get('N_DIM', None)
@@ -36,7 +38,18 @@ elif config_type == 'symmetry_admissible_set':
         w_dim = 19
     else:
         raise Exception('wrong type')
-
+elif config_type == 'cycle_graphs':
+    nodes_dim = os.environ.get('NODES_DIM', None)
+    assert nodes_dim != None 
+    if nodes_dim == '7_5':
+        n_dim = 5
+        num_nodes = 7
+    if nodes_dim == '9_5':
+        n_dim = 5
+        num_nodes = 9
+    if nodes_dim == '11_4':
+        n_dim = 4
+        num_nodes = 11
 
 log_dir = os.environ.get('LOG_DIR', 'logs')
 sample_llm_cnt = 10
@@ -77,7 +90,7 @@ elif config_type == 'cap_set':
     else:
         raise Exception('wrong n dim')
 
-    measure_timeout = 15
+    measure_timeout = 30
 
 
 elif config_type == 'admissible_set':
@@ -138,7 +151,7 @@ elif config_type == 'corners':
     # evaluate_function_temperature = 1
     # evaluate_function_mask_half = True
 
-    sample_iterator_temperature = 100
+    sample_iterator_temperature = 50
     sample_iterator_no_update_cnt = 3
 
     sample_llm_api_min_score = 0
@@ -311,7 +324,7 @@ def priority(el: tuple[int, ...]) -> float:
 elif config_type == 'cycle_graphs':
 
     additional_prompt = \
-"""I’m working on the Shannon capacity of cycle graphs problem, using a greedy algorithm guided by a priority function to determine vector selection order. The Shannon capacity problem seeks to find the maximum rate at which information can be transmitted over a noisy channel represented by a graph, with zero probability of error. Specifically, I focus on cycle graphs C_m and aim to construct large independent sets in powers of cycle graphs C_m^n to find better lower bounds for the Shannon capacity \Theta(C_m).
+f'''I'm working on the maximum independent set problem in the {n_dim}-th strong product of a {num_nodes}-node cycle graph, using a greedy algorithm guided by a priority function to determine vector selection order.
 
 
 ## What I Need
@@ -325,14 +338,14 @@ elif config_type == 'cycle_graphs':
 ## Task Description
 Please help me develop an improved `priority_v2` function by analyzing my reference implementations.
 Output Python code only, without any comments.
-Loop through the input `el` to compute the score.
+The score is computed based on the relationships among el[i], el[-i], el[i - k], el[i + k], and el[(i + k) % n].
 
 
 ## Current Priority Functions
 Below are two reference priority functions I've developed.
-"""
+'''
 
-    specification = '''
+    specification = f'''
 import itertools
 import numpy as np
 import pickle
@@ -354,10 +367,10 @@ def solve(num_nodes: int, n: int) -> list[tuple[int, ...]]:
     Returns:
         A list of `n`-tuples in `{0, 1, 2, ..., num_nodes - 1}`.
     """
-    with open('cycle_graphs7_5.pkl', 'rb') as f:
+    with open('cycle_graphs{nodes_dim}.pkl', 'rb') as f:
         to_block, powers, children = pickle.load(f)
-    scores = np.array([priority(tuple(child))
-                        for child in children], dtype=np.float32)
+    scores = np.array([priority(tuple(child), num_nodes, n)
+                        for child in children],dtype=np.float32)
 
     # Build `max_set` greedily, using scores for prioritization.
     max_set = np.empty(shape=(0, n), dtype=np.int32)
@@ -376,7 +389,7 @@ def solve(num_nodes: int, n: int) -> list[tuple[int, ...]]:
 
 
 @funsearch.evolve
-def priority(el: tuple[int, ...]) -> float:
+def priority(el: tuple[int, ...], num_nodes: int, n: int) -> float:
     """Returns the priority with which we want to add `el` to the set.
 
     Args:
@@ -571,23 +584,25 @@ def priority(el: tuple[int, ...]) -> float:
 
 
 elif config_type == 'corners':
+    raise Exception('todo')
 
     additional_prompt = \
-f'''I'm working on the {n_dim}-dimensional corners problem using a greedy algorithm with a priority function to determine vector selection order. A corner-free set is a subset of vectors in \((\mathbb{Z}_2^{n_dim} \times \mathbb{Z}_2^{n_dim})\) such that no three vectors form a corner — that is, no triple of the form \((x, y), (x+\lambda, y), (x, y+\lambda)\), with \(\lambda \ne 0\), all appear in the set (arithmetic done modulo 2).
+f'''I'm working on the {n_dim}-dimensional corners problem using a greedy algorithm with a priority function to determine vector selection order. A corner-free set is a subset of vectors in \((\mathbbZ_2^{n_dim} times \mathbbZ_2^{n_dim})\) such that no three vectors form a corner — that is, no triple of the form \((x, y), (x+\lambda, y), (x, y+\lambda)\), with \(\lambda != 0\), all appear in the set (arithmetic done modulo 2).
 
 ## What I Need
-1. **BOLD EVOLUTION OF PRIORITY FUNCTION**: Please create a novel `priority_v2` function that might outperform my reference implementations. Don't be constrained by my current approaches - take risks and suggest radically different strategies that might lead to breakthroughs.
+1. **BOLD EVOLUTION OF PRIORITY FUNCTION**: Please create an improved `priority_v2` function that might outperform my reference implementations. Don't be constrained by my current approaches - take risks and suggest radically different strategies that might lead to breakthroughs.
 2. **MARK ALL TUNABLE PARAMETERS**: For every element in the `priority_v2` function that could potentially be tuned, wrap it with tunable([option1, option2, ...]).
   Format examples:
-    - `if x == tunable([num_1, num_2, num_3])`
-    - `y = tunable([np.exp(x), np.log(x)))`
+    - `if x == tunable([x1, x2, x3]):`
+    - `z = tunable([x + y, x * (y + 1))`
 
 
 ## Task Description
-Please help me develop a smarter `priority_v2` function by analyzing my reference implementations.
+Please help me develop an improved `priority_v2` function by analyzing my reference implementations.
 1. Keep the exact function signature: `def priority_v2(el: tuple[int, ...], n: int) -> float:`.
 2. Output only Python code, without imports, helper functions, or comments. Keep it as short and simple as possible.
 3. Use a basic heuristic approach; avoid complex statistical methods.
+4. **Don't use corners**
 
 
 ## Current Priority Functions
@@ -595,8 +610,38 @@ Below are two reference priority functions I've developed.
 '''
 
 
+    specification = f'''import corners
+import itertools
+import numpy as np
 
-    specification = f'''
 
+@funsearch.run
+def evaluate(n: int)-> int:
+    """Returns the size of the maximum set of indices found by DFS."""
+    return len(solve(n))
+
+
+def solve(n: int)-> list[tuple[int, ...]]:
+    """Runs DFS to find a large set of indices."""
+    # Obtain the priority scores.
+    scores = np.array([priority(el, n) for el in itertools.product(range(2), repeat=2 * n)])
+    # print(scores)
+    all_indices = np.arange(len(scores), dtype=np.int32)
+    # Run a greedy approach that iteratively adds the next highest-priority
+    # index that guarantees the combinatorial degeneration property.
+    corners.set_params(n, 2)
+    return corners.greedy(scores)
+
+@funsearch.evolve
+def priority(el: tuple[int, ...], n: int)-> float:
+    """Returns the priority with which we want to add `el`.
+    Args:
+        el: A candidate element to be considered, as a tuple of length `2 * n` with
+        elements in {0, 1}.
+        n: Power of the graph.
+    Returns:
+        A number reflecting the priority with which we want to add `el` to the set.
+    """
+    return 0.
 '''
 
