@@ -60,6 +60,14 @@ bool forms_corner(const Vector& a, const Vector& b, const Vector& c) {
         // bool match_a_3 = true, match_b_3 = true;
         int j = 0;
         for (j = 0; j < p; ++j) {
+            if (a[i + n] != b[i + n]) {
+                match_b = false;
+                break;
+            }
+            if (a[i] != c[i]) {
+                match_c = false;
+                break;
+            }
             if ((a[i] + j) % p != b[i] || a[i + n] != b[i + n]) {
                 match_b = false;
                 continue;
@@ -80,6 +88,23 @@ bool forms_corner(const Vector& a, const Vector& b, const Vector& c) {
     }
     return false;
 }
+// bool forms_corner(const Vector& a, const Vector& b, const Vector& c) {
+//     for (int lambda = 1; lambda < p; ++lambda) {
+//         bool match_b = true, match_c = true;
+//         for (int i = 0; i < n; ++i) {
+//             if ((a[i] + lambda) % p != b[i] || a[i + n] != b[i + n]) {
+//                 match_b = false;
+//                 break;
+//             }
+//             if (a[i] != c[i] || (a[i + n] + lambda) % p != c[i + n]) {
+//                 match_c = false;
+//                 break;
+//             }
+//         }
+//         if (match_b && match_c) return true;
+//     }
+//     return false;
+// }
 
 // 检查新向量是否可以加入当前集合而不形成角
 bool is_valid(const Vector& candidate, const std::vector<Vector>& current_set) {
@@ -105,15 +130,15 @@ std::vector<Vector> greedy(const std::vector<float>& scores) {
     std::sort(indices.begin(), indices.end(), [&scores](size_t i1, size_t i2) {
         return scores[i1] > scores[i2];
     });
-    for (int i = 0; i < 30; ++i) {
-        std::cout << indices[i] << " ";
-    }
+    // for (int i = 0; i < 30; ++i) {
+    //     std::cout << indices[i] << " ";
+    // }
     for (size_t idx : indices) {
         const Vector& candidate = all_vectors[idx];
         if (is_valid(candidate, selected)) {
-            std::cout << idx << " ";
-            for (int x : candidate) std::cout << x << " ";
-            std::cout << "\n";
+            // std::cout << idx << " ";
+            // for (int x : candidate) std::cout << x << " ";
+            // std::cout << "\n";
             selected.push_back(candidate);
         }
     }

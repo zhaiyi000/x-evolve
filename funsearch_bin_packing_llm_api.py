@@ -22,7 +22,7 @@ from concurrent.futures import ProcessPoolExecutor, TimeoutError
 import re
 import gc
 import os
-from config import config_type, log_dir, additional_prompt, specification, measure_timeout, n_dim, island_cnt
+from config import config_type, log_dir, additional_prompt, specification, measure_timeout, n_dim, island_cnt, nodes_dim
 import random
 
 print('pid', os.getpid())
@@ -151,8 +151,7 @@ class LLMAPI(sampler.LLM):
 
     def draw_samples(self, llm_ins: sample_llm_api.LLM, prompt: str, parent_score: str) -> Collection[str]:
         """Returns multiple predicted continuations of `prompt`."""
-        add_score_prompt = '\n'.join(['The num of vectexs the two or one priority functions can select out' + parent_score, prompt])
-        return self._draw_sample(llm_ins, [add_score_prompt] * self._samples_per_prompt)
+        return self._draw_sample(llm_ins, [prompt] * self._samples_per_prompt)
 
     def _draw_sample(self, llm_ins: sample_llm_api.LLM, content_list: list) -> str:
         prompt_list = [self._additional_prompt + '```python\n' + content + '```' for content in content_list]
@@ -266,9 +265,11 @@ if __name__ == '__main__':
     elif config_type == 'cap_set':
         inputs = {n_dim: n_dim}
     elif config_type == 'cycle_graphs':
-        inputs = {'7_5': cycle_graphs_utils.datasets['7_5']}
+        inputs = {nodes_dim: cycle_graphs_utils.datasets[nodes_dim]}
     elif config_type == 'admissible_set':
         inputs = {'12_7': {'n': 12, 'w': 7}}
+    elif config_type == 'corners':
+        inputs = {n_dim: n_dim}
     else:
         raise Exception('wrong case')
     global_max_sample_num = island_cnt * 1000  # if it is set to None, funsearch will execute an endless loop
