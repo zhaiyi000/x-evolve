@@ -97,7 +97,7 @@ class Profiler:
         self._all_sampled_functions[self._num_samples] = programs
         self._record_and_verbose(programs)
         # self._write_tensorboard()
-        self._write_json(programs)
+        # self._write_json(programs)
 
     def _record_and_verbose(self, programs):
         function_str = str(programs).strip('\n')

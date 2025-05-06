@@ -39,7 +39,7 @@ elif config_type == 'symmetry_admissible_set':
 
 
 log_dir = os.environ.get('LOG_DIR', 'logs')
-sample_llm_cnt = 3
+sample_llm_cnt = 10
 update_database_cnt = 3
 island_cnt = 1
 
@@ -249,7 +249,7 @@ f'''I'm working on the {n_dim}-dimensional cap set problem using a greedy algori
 ## Task Description
 Please help me develop an improved `priority_v2` function by analyzing my reference implementations.
 Output Python code only, without any comments.
-Compute a score using loops and if-else.
+The score is computed based on the relationships among el[i], el[-i], el[i - k], el[i + k], and el[(i + k) % n].
 
 
 ## Current Priority Functions
@@ -319,12 +319,13 @@ elif config_type == 'cycle_graphs':
 2. **MARK ALL TUNABLE PARAMETERS**: For every element in the `priority_v2` function that could potentially be tuned, wrap it with tunable([option1, option2, ...]).
   Format examples:
     - `if x == tunable([x1, x2, x3]):`
-    - `z = tunable([x + y, x * (y + 1))`
+    - `z = tunable([x + y, x * (y + 1)])`
 
 
 ## Task Description
 Please help me develop an improved `priority_v2` function by analyzing my reference implementations.
-Output Python code only, without any comments. Keep the implementation as **short** as possible.
+Output Python code only, without any comments.
+Loop through the input `el` to compute the score.
 
 
 ## Current Priority Functions
@@ -482,7 +483,7 @@ f'''I'm working on the constant-weight admissible set problem with dimension {n_
 ## Task Description
 Please help me develop an improved `priority_v2` function by analyzing my reference implementations.
 Output Python code only, without any comments.
-Compute a score using loops and if-else.
+Compute the score using loops, considering the relationships between el[i], el[-i], el[i - k], el[i + k], and el[(i + k) % n].
 
 
 ## Current Priority Functions
