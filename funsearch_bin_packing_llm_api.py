@@ -82,7 +82,7 @@ def _trim_preface_of_body(sample: str) -> str:
         while func_body_lineno < len(lines):
             code += lines[func_body_lineno] + '\n'
             func_body_lineno += 1
-            if func_body_lineno < len(lines) and lines[func_body_lineno].startswith('    ') is False:
+            if func_body_lineno < len(lines) and lines[func_body_lineno].strip() != '' and lines[func_body_lineno].startswith('    ') is False:
                 break
         return code
     print('can not find core code')
