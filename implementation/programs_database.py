@@ -286,13 +286,17 @@ class ProgramsDatabase:
 
                 for idx, keep_idx in zip(discard_indices, keep_indices):
                     print(f'copy best node from {keep_idx} {max_score_list[keep_idx]} to {idx} {max_score_list[idx]}')
-                    source_nodes = [(node, len(str(node.program))) for node in self._nodes[keep_idx] if node.score == max_score_list[keep_idx]]
-                    lengths = [x[1] for x in source_nodes]
+                    # source_nodes = [(node, len(str(node.program))) for node in self._nodes[keep_idx] if node.score == max_score_list[keep_idx]]
+                    # lengths = [x[1] for x in source_nodes]
 
-                    normalized_lengths = (np.array(lengths) - min(lengths)) / (max(lengths) - min(lengths) + 1e-6)
-                    probabilities = sample_iterator.softmax(-normalized_lengths, temperature=0.5)
-                    keep_node = source_nodes[np.random.choice(len(source_nodes), p=probabilities)][0]
+                    # normalized_lengths = (np.array(lengths) - min(lengths)) / (max(lengths) - min(lengths) + 1e-6)
+                    # probabilities = sample_iterator.softmax(-normalized_lengths, temperature=0.5)
+                    # keep_node = source_nodes[np.random.choice(len(source_nodes), p=probabilities)][0]
                     
+                    # keep_node = Node(visit_count=0, score=keep_node.score, program=keep_node.program, model=keep_node.model, parent_score=keep_node.parent_score, island_id=idx, reset_tag=True, node_id=self.save_idx, parent_id=keep_node.parent_id)
+                    # self._nodes[idx] = [keep_node]
+                    # self.dump_node(keep_node, keep_node.score, idx)
+                    keep_node = self._nodes[idx][0]
                     keep_node = Node(visit_count=0, score=keep_node.score, program=keep_node.program, model=keep_node.model, parent_score=keep_node.parent_score, island_id=idx, reset_tag=True, node_id=self.save_idx, parent_id=keep_node.parent_id)
                     self._nodes[idx] = [keep_node]
                     self.dump_node(keep_node, keep_node.score, idx)
