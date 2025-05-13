@@ -87,7 +87,7 @@ def main(
 
     # We send the initial implementation to be analysed by one of the evaluators.
     initial = template.get_function(function_to_evolve).body
-    (sample_template, evaluate_time, score_list, decisions_list), _ = evaluator_ins_list[0].analyse(sample_iterator.SampleIterator(initial), [[]])
+    (sample_template, evaluate_time, score_list, decisions_list), _ = evaluator_ins_list[0].analyse(sample_iterator.SampleIterator(initial), [[]], skep_test=False)
     profiler.register_function_list(sample_template, None, evaluate_time, score_list, decisions_list)
     new_function, _ = evaluator._sample_to_program(initial, template, function_to_evolve)
     database.register_program(new_function, max(score_list), model=None, parent_score=None, parent_id=None, island_id=-1)

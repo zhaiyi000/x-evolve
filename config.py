@@ -252,15 +252,15 @@ f'''I'm working on the {n_dim}-dimensional cap set problem using a greedy algori
 
 
 ## What I Need
-1. **BOLD EVOLUTION OF PRIORITY FUNCTION**: Please create an improved `priority_v2` function that might outperform my reference implementations. Don't be constrained by my current approaches - take risks and suggest radically different strategies that might lead to breakthroughs.
-2. **MARK ALL TUNABLE PARAMETERS**: For every element in the `priority_v2` function that could potentially be tuned, wrap it with tunable([option1, option2, ...]).
+1. **BOLD EVOLUTION OF PRIORITY FUNCTION**: Please create an improved `priority_new` function that might outperform my reference implementations. Don't be constrained by my current approaches - take risks and suggest radically different strategies that might lead to breakthroughs.
+2. **MARK ALL TUNABLE PARAMETERS**: For every element in the `priority_new` function that could potentially be tuned, wrap it with tunable([option1, option2, ...]).
   Format examples:
     - `if x == tunable([x1, x2, x3]):`
     - `z = tunable([x + y, x * (y + 1)])`
 
 
 ## Task Description
-Please help me develop an improved `priority_v2` function by analyzing my reference implementations.
+Please help me develop an improved `priority_new` function by analyzing my reference implementations.
 Output Python code only, without any comments.
 The score is computed based on the relationships among el[i], el[-i], el[i - k], el[i + k], and el[(i + k) % n].
 
@@ -486,17 +486,17 @@ f'''I'm working on the constant-weight admissible set problem with dimension {n_
 
 
 ## What I Need
-1. **BOLD EVOLUTION OF PRIORITY FUNCTION**: Please create an improved `priority_v2` function that might outperform my reference implementations. Don't be constrained by my current approaches - take risks and suggest radically different strategies that might lead to breakthroughs.
-2. **MARK ALL TUNABLE PARAMETERS**: For every element in the `priority_v2` function that could potentially be tuned, wrap it with tunable([option1, option2, ...]).
+1. **BOLD EVOLUTION OF PRIORITY FUNCTION**: Please create an improved `priority_new` function that might outperform my reference implementations. Don't be constrained by my current approaches - take risks and suggest radically different strategies that might lead to breakthroughs.
+2. **MARK ALL TUNABLE PARAMETERS**: For every element in the `priority_new` function that could potentially be tuned, wrap it with tunable([option1, option2, ...]).
   Format examples:
     - `if x == tunable([x1, x2, x3]):`
     - `z = tunable([x + y, x * (y + 1)])`
 
 
 ## Task Description
-Please help me develop an improved `priority_v2` function by analyzing my reference implementations.
+Please help me develop an improved `priority_new` function by analyzing my reference implementations.
 Output Python code only, without any comments.
-Compute the score using loops, considering the relationships between el[i], el[-i], el[i - k], el[i + k], and el[(i + k) % n].
+The score is computed based on the relationships among el[i], el[-i], el[i - k], el[i + k], and el[(i + k) % n].
 
 
 ## Current Priority Functions
