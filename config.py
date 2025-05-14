@@ -26,8 +26,11 @@ if config_type == 'cap_set' or config_type == 'corners':
     n_dim = int(n_dim)
 elif config_type == 'symmetry_admissible_set':
     n_w_dim = os.environ.get('N_W_DIM', None)
-    assert n_w_dim in ['21_15', '24_17', '27_19']
-    if n_w_dim == '21_15':
+    assert n_w_dim in ['15_10', '21_15', '24_17', '27_19']
+    if n_w_dim == '15_10':
+        n_dim = 15
+        w_dim = 10
+    elif n_w_dim == '21_15':
         n_dim = 21
         w_dim = 15
     elif n_w_dim == '24_17':
@@ -118,7 +121,10 @@ elif config_type == 'symmetry_admissible_set':
 
     sample_llm_api_min_score = 548
 
-    if n_w_dim == '21_15':
+    if n_w_dim == '15_10':
+        measure_timeout = 30
+        sample_iterator_temperature = 1000
+    elif n_w_dim == '21_15':
         measure_timeout = 30
         sample_iterator_temperature = 10000
     elif n_w_dim == '24_17':
