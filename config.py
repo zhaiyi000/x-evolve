@@ -44,20 +44,13 @@ elif config_type == 'symmetry_admissible_set':
 elif config_type == 'cycle_graphs':
     nodes_dim = os.environ.get('NODES_DIM', None)
     assert nodes_dim != None 
-    if nodes_dim == '7_5':
-        n_dim = 5
-        num_nodes = 7
-    if nodes_dim == '9_5':
-        n_dim = 5
-        num_nodes = 9
-    if nodes_dim == '11_4':
-        n_dim = 4
-        num_nodes = 11
+    num_nodes, n_dim = map(int, nodes_dim.split('_'))
+    
 
 log_dir = os.environ.get('LOG_DIR', 'logs')
 sample_llm_cnt = 10
 update_database_cnt = 3
-island_cnt = 1
+island_cnt = 4
 
 
 if config_type == 'bin_packing':
@@ -330,21 +323,21 @@ def priority(el: tuple[int, ...]) -> float:
 elif config_type == 'cycle_graphs':
 
     additional_prompt = \
-f'''I'm working on the maximum independent set problem in the {n_dim}-th strong product of a {num_nodes}-node cycle graph, using a greedy algorithm guided by a priority function to determine vector selection order.
+f'''I'm working on the maximum independent set problem in the {n_dim}-th strong product of a {num_nodes}-node cycle graph, using a greedy algorithm guided by a priority function to determine vector selection order.Each vertex in this graph is a {n_dim}-dimensional vector with values in {0, 1, ..., num_nodes-1}. Two vertices are adjacent if they differ by at most 1 (mod {num_nodes}) in each coordinate and are not identical. An independent set is a subset of vectors where no two are adjacent.
 
 
 ## What I Need
-1. **BOLD EVOLUTION OF PRIORITY FUNCTION**: Please create an improved `priority_v2` function that might outperform my reference implementations. Don't be constrained by my current approaches - take risks and suggest radically different strategies that might lead to breakthroughs.
-2. **MARK ALL TUNABLE PARAMETERS**: For every element in the `priority_v2` function that could potentially be tuned, wrap it with tunable([option1, option2, ...]).
+1. **BOLD EVOLUTION OF PRIORITY FUNCTION**: Please create an improved `priority_new` function that might outperform my reference implementations. Don't be constrained by my current approaches - take risks and suggest radically different strategies that might lead to breakthroughs.
+2. **MARK ALL TUNABLE PARAMETERS**: For every element in the `priority_new` function that could potentially be tuned, wrap it with tunable([option1, option2, ...]).
   Format examples:
     - `if x == tunable([x1, x2, x3]):`
     - `z = tunable([x + y, x * (y + 1)])`
 
 
 ## Task Description
-Please help me develop an improved `priority_v2` function by analyzing my reference implementations.
+Please help me develop an improved `priority_new` function by analyzing my reference implementations.
 Output Python code only, without any comments.
-The score is computed based on the relationships among el[i], el[-i], el[i - k], el[i + k], and el[(i + k) % n].
+The function should be concise.
 
 
 ## Current Priority Functions
@@ -407,8 +400,8 @@ def priority(el: tuple[int, ...], num_nodes: int, n: int) -> float:
         A number reflecting the priority with which we want to add `el` to the
         independent set.
     """
-    num_nodes = 7
-    n = 5
+    num_nodes = {num_nodes}
+    n = {n_dim}
     return 0.
 '''
 

@@ -160,7 +160,7 @@ class Evaluator:
             self,
             tune_sampler: sample_iterator.SampleIterator,
             indices_list: list[int],
-            skep_test = False
+            skip_test = False
             # version_generated: int | None,
             # **kwargs  # RZ: add this to do profile
     ) -> None:
@@ -199,7 +199,7 @@ class Evaluator:
             # current_input is a key (perhaps in string type)
             # do not ignore this when implementing SandBox !!!
 
-            if skep_test:
+            if skip_test:
                 assert len(scores_per_test_list) == 1
                 result_list = [(-1, True)]
                 timeout = False
