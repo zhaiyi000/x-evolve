@@ -4,4 +4,4 @@ This repo is based on [DeepMind’s FunSearch](https://github.com/google-deepmin
 
 ## License
 
-TLM is licensed under the [Apache-2.0](LICENSE) license.
+X-evolve is licensed under the [Apache-2.0](LICENSE) license.
