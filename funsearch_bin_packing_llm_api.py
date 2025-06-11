@@ -9,6 +9,7 @@ from implementation import evaluator
 from implementation import code_manipulation
 from implementation import sample_llm_api
 from bin_packing import bin_packing_utils
+from bin_packing import bin_packing_train
 from cycle_graphs import cycle_graphs_utils
 
 import json

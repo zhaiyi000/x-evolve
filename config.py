@@ -165,16 +165,35 @@ else:
 if config_type == 'bin_packing':
     
     additional_prompt = \
-"""
-Create an improved Python function for online bin-packing that demonstrates:
-Novel priority strategy: Propose a smarter item-bin matching approach considering both spatial fit and future packing potential.
-Parameter tuning points: Clearly mark tuning parameters using tunable([option1, option2, ...]) wrapper. Examples:
-`if remaining_capacity > tunable([0.2, 0.5]):`
-`sorted(items, key=lambda x: tunable([x.size, x.weight]))`
-Focus first on strategic innovation, then expose tuning parameters through tunable([option1, option2, ...]) calls. Keep implementation practical but non-trivial.
-"""
+"""I'm working on the online bin-packing problem using a greedy algorithm with a priority function.
 
-    specification = r'''import numpy as np
+
+## What I Need
+1. **BOLD EVOLUTION OF PRIORITY FUNCTION**: Please create an improved `priority_new` function that might outperform my reference implementations. Don't be constrained by my current approaches - take risks and suggest radically different strategies that might lead to breakthroughs.
+2. **MARK ALL TUNABLE PARAMETERS**: For every element in the `priority_new` function that could potentially be tuned, wrap it with tunable([option1, option2, ...]).
+  Format examples:
+    - `if x == tunable([x1, x2, x3]):`
+    - `z = tunable([x + y, x * (y + 1)])`
+
+
+## Task Description
+Please help me develop an improved `priority_new` function by analyzing my reference implementations.
+Output Python code only, without any comments.
+Keep it as short as possible.
+Don't use random functions.
+
+
+## Current Priority Functions
+Below are two reference priority functions I've developed.
+"""
+# Create an improved Python function for online bin-packing that demonstrates:
+# Novel priority strategy: Propose a smarter item-bin matching approach considering both spatial fit and future packing potential.
+# Parameter tuning points: Clearly mark tuning parameters using tunable([option1, option2, ...]) wrapper. Examples:
+# `if remaining_capacity > tunable([0.2, 0.5]):`
+# `sorted(items, key=lambda x: tunable([x.size, x.weight]))`
+# Focus first on strategic innovation, then expose tuning parameters through tunable([option1, option2, ...]) calls. Keep implementation practical but non-trivial.
+
+    specification = f'''import numpy as np
 
 
 def get_valid_bin_indices(item: float, bins: np.ndarray) -> np.ndarray:
@@ -238,10 +257,7 @@ def priority(item: float, bins: np.ndarray) -> np.ndarray:
     Return:
         Array of same size as bins with priority score of each bin.
     """
-    ratios = item / bins
-    log_ratios = np.log(ratios)
-    priorities = -log_ratios
-    return priorities
+    return 0
 '''
 
 elif config_type == 'cap_set':
