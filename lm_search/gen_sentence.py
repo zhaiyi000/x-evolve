@@ -9,19 +9,28 @@ import torch
 import torch.nn.functional as F
 from transformers import GPT2LMHeadModel
 from funsearch_bin_packing_llm_api import Sandbox, specification
-from implementation import bin_packing_utils
+from bin_packing import bin_packing_utils
 from typing import Dict
 from implementation import code_manipulation
 from implementation import sample_iterator
 from implementation import evaluate_function
 from implementation import evaluator
+from bin_packing import bin_packing_val
+from bin_packing import bin_packing_train
+from config import config_type
 import math
 import copy
 
-tokenizer_path = f'tokenizer_512_short_1'
-model_path = f'output_512_short_1/checkpoint-100000'
-inputs = {'12_7': {'n': 12, 'w': 7}}
-test_input = '12_7'
+if config_type == 'bin_packing':
+    trim = f'def priority(item: float, bins: np.ndarray) -> np.ndarray:\n    \"\"\"Returns priority with which we want to add item to each bin.\n\n    Args:\n        item: Size of item to be added to the bin.\n        bins: Array of capacities for each bin.\n\n    Return:\n        Array of same size as bins with priority score of each bin.\n    \"\"\"\n'
+
+tokenizer_path = f'/root/funsearch/lm_search/tokenizer_train_4_100call_100samples'
+model_path = f'/root/funsearch/lm_search/output_100call_100samples/checkpoint-7000'
+source_path = f'/root/funsearch/lm_search/llm_train_4_100/*.json'
+best_val_path = f'best_in_val_4_100call_100samples_test.json'
+
+inputs = {'val': bin_packing_val.datasets['val_1']}
+test_input = 'val'
 
 def get_model():
     tokenizer = Tokenizer.from_pretrained(tokenizer_path)
@@ -47,8 +56,11 @@ def get_model():
 
 def get_data():
     files = []
-    files.extend(glob.glob('/root/funsearch/log_loop1_model3_21/funsearch_llm_api/samples/*.json'))
+    files.extend(glob.glob(source_path))
     files = natsort.natsorted(files)
+    
+    # num_choose = 10000
+    # files = np.random.choice(files,size = num_choose,replace= False)
 
     score_list = []
     visit_list = []
@@ -99,12 +111,13 @@ function_to_run = 'evaluate'
 def evaluate(code_list):
     program_list = []
     for generated_code in code_list:
+        generated_code = generated_code.replace(trim,'')
         new_function, program = evaluator._sample_to_program(generated_code, template, function_to_evolve)
         with open('program.txt', 'a') as f:
             f.write(program + '\n')
         program_list.append(program)
     result_list = exector.run(program_list, function_to_run=function_to_run, function_to_evolve=function_to_evolve, inputs=inputs, test_input=test_input, timeout_seconds=30)
-    return result_list
+    return result_list, program_list
 
 
 
@@ -128,17 +141,21 @@ def generate(model, input_ids, attention_mask, tokenizer):
         indices = indices.tolist()
     return indices
 
+def get_top_n(lst, n):
+    return sorted(lst, key=lambda x: x[0], reverse=True)[:n]
 
 
 def main():
     tokenizer, model, device = get_model()
     model.eval()
-    score_list, visit_list, length_list, function_list, max_score, visited_decisions = get_data()
-
+    score_list, visit_list, length_list, function_list, _, visited_decisions = get_data()
+    max_score = -500
+    
+    best_10 = [(int(-500),'') for _ in range(10)]
     while True:
         # prob = evaluate_function.calculate_score(score_list, visit_list, length_list)
         # indices = np.random.choice(len(function_list), size=64, replace=True, p=prob)
-        indices, _ = evaluate_function.calculate_score(score_list, length_list, size=64, replace=True)
+        indices, _ = evaluate_function.calculate_score(score_list, length_list, size=4, replace=True)
         # score_list: list, length_list: list, size: int, replace: bool
         prompts = [function_list[idx] for idx in indices]
         features = tokenizer(prompts)
@@ -196,12 +213,53 @@ def main():
         assert gen_i == len(indices_gen)
         print()
 
-        result_list = evaluate(code_list)
+        result_list, program_list = evaluate(code_list)
+        
+        
+        
         if result_list[1] ==  False:
             this_score_list = [x[0] for x in result_list[0] if x[1]]
         else:
             raise TimeoutError('timeout')
+        
+        if len(this_score_list) == 0:
+            print('Running error: no valid score.')
+            continue
+        
+        if len(this_score_list) != len(program_list):
+            print('Error score exist.')
+            continue
+        
+        for score, program in zip(this_score_list, program_list):
+            best_10.append((score, program))
+
+        best_10 = get_top_n(best_10, 10)
+        
+        with open(best_val_path,'w') as file:
+            json.dump(best_10, file)
+
         print('this max score:', max(this_score_list), 'global score:', max_score)
+        
+            # input()
+            # import pdb; pdb.set_trace()
+
+            # import debugpy
+            # debugpy.listen(5678)
+            # print('wait_for_client...')
+            # debugpy.wait_for_client()
+            # debugpy.breakpoint()
+
+            # .vscode/launch.json中添加
+            # {
+            # "name": "Python Debugger: Remote Attach",
+            # "type": "debugpy",
+            # "request": "attach",
+            # "connect": {
+            #     "host": "localhost",
+            #     "port": 5678
+            # },
+            # },
+
         if max(this_score_list) > max_score:
             max_score = max(this_score_list)
 

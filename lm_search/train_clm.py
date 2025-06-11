@@ -10,6 +10,7 @@ import datasets
 import evaluate
 import torch
 from datasets import load_from_disk
+from functools import partial
 
 import transformers
 from transformers import (
@@ -49,7 +50,7 @@ MODEL_CONFIG_CLASSES = list(MODEL_FOR_CAUSAL_LM_MAPPING.keys())
 MODEL_TYPES = tuple(conf.model_type for conf in MODEL_CONFIG_CLASSES)
 
 
-def ddd_data_collator(features):
+def ddd_data_collator(features,max_length):
     mask_token = 3
 
     labels_list = []
@@ -71,7 +72,7 @@ def ddd_data_collator(features):
 
     def pad_tensor(key, pad_value=0):
         tensors = [f[key] for f in features]
-        max_len = 1920
+        max_len = max_length
         tensors = [F.pad(seq, (0, max_len - len(seq)), value=pad_value) for seq in tensors]
         tensors = torch.stack(tensors)
         return tensors
@@ -467,6 +468,8 @@ def main():
             return metric.compute(predictions=preds, references=labels)
 
     # Initialize our Trainer
+    custom_data_collator = partial(ddd_data_collator, max_length= tokenizer.model_max_length)
+    
     trainer = Trainer(
         model=model,
         args=training_args,
@@ -474,7 +477,7 @@ def main():
         eval_dataset=eval_dataset if training_args.do_eval else None,
         tokenizer=tokenizer,
         # Data collator will default to DataCollatorWithPadding, so we change it.
-        data_collator=ddd_data_collator,
+        data_collator=custom_data_collator,
         compute_metrics=compute_metrics if training_args.do_eval and not is_torch_tpu_available() else None,
         preprocess_logits_for_metrics=preprocess_logits_for_metrics
         if training_args.do_eval and not is_torch_tpu_available()
