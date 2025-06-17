@@ -23,7 +23,7 @@ from concurrent.futures import ProcessPoolExecutor, TimeoutError
 import re
 import gc
 import os
-from config import config_type, log_dir, additional_prompt, specification, measure_timeout, n_w_dim, n_dim, w_dim, island_cnt, nodes_dim
+from config import config_type, log_dir, additional_prompt, specification, measure_timeout, n_w_dim, n_dim, w_dim, island_cnt, nodes_dim, max_sample_num, delete_logs
 import random
 
 print('pid', os.getpid())
@@ -288,14 +288,13 @@ if __name__ == '__main__':
         inputs = {n_dim: n_dim}
     else:
         raise Exception('wrong case')
-    global_max_sample_num = island_cnt * 100000  # if it is set to None, funsearch will execute an endless loop
+    global_max_sample_num = island_cnt * max_sample_num  # if it is set to None, funsearch will execute an endless loop
     
     import shutil, os
     if os.path.exists(log_dir):
-        # y_or_n = input('delete logs folder? [n]')
-        # if y_or_n == 'y':
-        print('delete logs folder!')
-        shutil.rmtree(log_dir)
+        if delete_logs == 'y':
+            print('delete logs folder!')
+            shutil.rmtree(log_dir)
     
     funsearch.main(
         specification=specification,

@@ -1,13 +1,37 @@
-
-# import debugpy
-# debugpy.listen(5678)
-# print('wait_for_client...')
-# debugpy.wait_for_client()
-# debugpy.breakpoint()
-
-
+seed = 42
 import os
+import random
+import numpy as np
 
+def set_seed(seed=42, use_cuda=False):
+    # 设置 Python 随机数种子
+    random.seed(seed)
+    
+    # 设置 NumPy 随机数种子
+    np.random.seed(seed)
+    
+    # PyTorch 设置随机数种子
+    try:
+        import torch
+        torch.manual_seed(seed)
+        torch.cuda.manual_seed(seed)
+        torch.cuda.manual_seed_all(seed)  # 如果有多个 GPU
+        
+        # 确保 PyTorch 的随机操作是可重复的
+        torch.backends.cudnn.deterministic = True
+        torch.backends.cudnn.benchmark = False
+    except ImportError:
+        print("PyTorch is not installed, skipping PyTorch seed setting.")
+    
+    os.environ['PYTHONHASHSEED'] = str(seed)
+    
+    # 设置 CuDNN 相关环境变量，确保完全可复现（可能影响性能）
+    if use_cuda:
+        os.environ['CUBLAS_WORKSPACE_CONFIG'] = ':4096:8'
+    
+    print(f"Seed set to {seed}")
+
+set_seed(seed)
 
 config_type = os.environ.get('CONFIG_TYPE', None)
 if config_type not in ['bin_packing', 'cap_set', 'admissible_set', 'symmetry_admissible_set', 'cycle_graphs', 'corners']:
@@ -46,8 +70,11 @@ elif config_type == 'cycle_graphs':
     assert nodes_dim != None 
     num_nodes, n_dim = map(int, nodes_dim.split('_'))
     
-
+max_sample_num = 2500
 log_dir = os.environ.get('LOG_DIR', 'logs')
+delete_logs = 'n'
+iteration_cnt = 400
+batch_size = 64
 sample_llm_cnt = 10
 update_database_cnt = 3
 island_cnt = 4
@@ -660,3 +687,9 @@ def priority(el: tuple[int, ...], n: int)-> float:
     return 0.
 '''
 
+not_to_print = ['__name__', '__doc__', '__package__', '__loader__', '__spec__', '__file__', '__cached__', '__builtins__', 'not_to_print']
+print("全局变量：")
+for name, value in list(globals().items()):
+    if name in not_to_print:
+        continue
+    print(f"{name} = {value}")

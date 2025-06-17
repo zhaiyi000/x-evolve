@@ -29,7 +29,7 @@ import copy
 import threading
 import queue
 from implementation import sample_llm_api
-from config import sample_llm_cnt, update_database_cnt
+from config import sample_llm_cnt, update_database_cnt, batch_size
 
 
 class LLM(ABC):
@@ -99,6 +99,7 @@ class Sampler:
         self._function_to_evolve = function_to_evolve
         self._mux_sem = threading.Semaphore(1)
         self._llm_cnt = sample_llm_cnt
+        self._batch_size = batch_size
         self._update_database_cnt = update_database_cnt
         self._queue = queue.Queue(max(self._llm_cnt//3, 1))
 
@@ -180,11 +181,11 @@ class Sampler:
         for llm_name, prompt, (sample_ori, sample) in samples:
             with self._mux_sem:
                 tune_sampler = sample_iterator.SampleIterator(code=sample)
-            batch_size = 64
+
             print_log = ''
             while True:
                 with self._mux_sem:
-                    indices, print_str = tune_sampler.batch_sample(batch_size=batch_size)
+                    indices, print_str = tune_sampler.batch_sample(batch_size=self._batch_size)
                     print_log += print_str
                 
                 print_log += f'launch {len(indices)} evaluate tasks\n'

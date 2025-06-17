@@ -35,7 +35,7 @@ from config import log_dir
 import os
 import json
 import natsort, glob
-from config import sample_llm_api_min_score, island_cnt
+from config import sample_llm_api_min_score, island_cnt, iteration_cnt
 import random
 import copy
 
@@ -279,7 +279,7 @@ class ProgramsDatabase:
 
             # node_cnt = sum(len(nodes) for nodes in self._nodes)
             # assert node_cnt > 0
-            if self.save_idx % (island_cnt * 100000) == 0:
+            if self.save_idx % (island_cnt * iteration_cnt) == 0:
                 max_score_list = [max([node.score for node in nodes]) for nodes in self._nodes]
                 discard_indices, keep_indices = get_lowest_half_indices(max_score_list)
                 assert len(discard_indices) == len(keep_indices)
